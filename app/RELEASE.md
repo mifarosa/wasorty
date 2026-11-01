@@ -43,17 +43,16 @@ ekranları, Google girişi ve gizlilik politikası hazır olunca:
 Aynı Google hesabıyla girince web'de kaydettiğin ilerleme, günlük sonuçların ve kullanıcı adın
 buluttan gelir; telefondakiyle birleşir, hiçbir şey azalmaz.
 
-Bir kerelik kurulum:
+Ek bir kurulum gerekmez: Firebase iOS uygulamasının (Bundle ID `com.mifarosa.wasorty`, proje
+**suloop-8ee05**) istemci kimliği ve URL şeması `app/googleConfig.js`'te durur. Bu kimlikler
+herkese açıktır (her derlenmiş uygulamanın içinde zaten bulunur), parola değildir. Firebase
+konsolunda Authentication → Sign-in method → **Google** açık olmalı.
 
-1. Firebase konsolu (proje **suloop-8ee05**) → Project settings → **Add app → iOS**, Bundle ID
-   `com.mifarosa.wasorty` → **GoogleService-Info.plist** dosyasını indir. (Authentication'da Google
-   sağlayıcısı zaten açık.)
-2. Dosyayı repoya koyma; EAS'a gizli dosya olarak ver:
-   ```bash
-   cd app
-   npx eas-cli env:create --name GOOGLE_SERVICES_PLIST --type file \
-     --value ./GoogleService-Info.plist --environment production --visibility secret
-   ```
-3. Yeniden derle ve gönder (`eas build -p ios --profile production`, `eas submit -p ios --latest`).
-   Dosya yoksa uygulama yine derlenir; Ayarlar'daki Google düğmesi "bu derlemede kurulu değil"
-   der.
+Başka bir Firebase iOS uygulaması kullanmak istersen o uygulamanın `GoogleService-Info.plist`
+dosyasını derlemeye ver (repoya koyma):
+
+```bash
+cd app
+npx eas-cli env:create --name GOOGLE_SERVICES_PLIST --type file \
+  --value ./GoogleService-Info.plist --environment production --visibility secret
+```

@@ -27,10 +27,22 @@ describe('the Google sign-in settings of the app', () => {
     expect(readGooglePlist('/does/not/exist.plist')).toBeNull();
   });
 
-  it('give the build the sign-in plugin only with a plist', () => {
+  it('fall back to the ids of the Wasorty iOS app, which are public', () => {
+    const { DEFAULT_GOOGLE } = require('../app/googleConfig.js');
+    expect(DEFAULT_GOOGLE.clientId).toMatch(/^268054495832-.+\.apps\.googleusercontent\.com$/);
+    expect(DEFAULT_GOOGLE.urlScheme).toBe(
+      `com.googleusercontent.apps.${DEFAULT_GOOGLE.clientId.replace('.apps.googleusercontent.com', '')}`
+    );
+  });
+
+  it('give the build the sign-in plugin and the client id', () => {
     const config = require('../app/app.config.js');
-    const without = config({ config: { name: 'Wasorty', plugins: ['expo-sqlite'] } });
-    expect(without.plugins).toEqual(['expo-sqlite']);
-    expect(without.extra.googleIosClientId).toBeNull();
+    const made = config({ config: { name: 'Wasorty', plugins: ['expo-sqlite'] } });
+    const { DEFAULT_GOOGLE } = require('../app/googleConfig.js');
+    expect(made.plugins).toEqual([
+      'expo-sqlite',
+      ['@react-native-google-signin/google-signin', { iosUrlScheme: DEFAULT_GOOGLE.urlScheme }]
+    ]);
+    expect(made.extra.googleIosClientId).toBe(DEFAULT_GOOGLE.clientId);
   });
 });
