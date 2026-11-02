@@ -22,4 +22,14 @@ function readGooglePlist(path) {
   }
 }
 
-module.exports = { parseGooglePlist, readGooglePlist };
+/**
+ * The ids of the Firebase iOS app of Wasorty (bundle com.mifarosa.wasorty). They are public:
+ * every build of the app carries them (in its URL schemes and its sign-in settings), so they
+ * are no secret like a password would be. A plist handed to the build still wins over them.
+ */
+const DEFAULT_GOOGLE = {
+  clientId: '268054495832-c4tcddd7dcd6st77408if73a9t3evpgo.apps.googleusercontent.com',
+  urlScheme: 'com.googleusercontent.apps.268054495832-c4tcddd7dcd6st77408if73a9t3evpgo'
+};
+
+module.exports = { DEFAULT_GOOGLE, parseGooglePlist, readGooglePlist };

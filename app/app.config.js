@@ -1,16 +1,16 @@
-const { readGooglePlist } = require('./googleConfig');
+const { DEFAULT_GOOGLE, readGooglePlist } = require('./googleConfig');
 
-// EAS gives a file variable's path in GOOGLE_SERVICES_PLIST; on a computer the file can sit
-// next to this one. Without it the app builds all the same, only without Google sign-in.
-const google = readGooglePlist(process.env.GOOGLE_SERVICES_PLIST || './GoogleService-Info.plist');
+// A plist of another Firebase app can be handed to the build (EAS gives a file variable's
+// path in GOOGLE_SERVICES_PLIST, or it sits next to this file); otherwise the app's own ids.
+const google =
+  readGooglePlist(process.env.GOOGLE_SERVICES_PLIST || './GoogleService-Info.plist') ??
+  DEFAULT_GOOGLE;
 
 module.exports = ({ config }) => ({
   ...config,
   plugins: [
     ...(config.plugins ?? []),
-    ...(google
-      ? [['@react-native-google-signin/google-signin', { iosUrlScheme: google.urlScheme }]]
-      : [])
+    ['@react-native-google-signin/google-signin', { iosUrlScheme: google.urlScheme }]
   ],
-  extra: { ...config.extra, googleIosClientId: google?.clientId ?? null }
+  extra: { ...config.extra, googleIosClientId: google.clientId }
 });
