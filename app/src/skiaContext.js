@@ -95,7 +95,8 @@ export class SkiaContext2D {
   }
 
   beginPath() {
-    this.#path = this.#skia.Skia.Path.Make();
+    // A Skia path cannot be changed; a builder collects the segments and makes the path.
+    this.#path = this.#skia.Skia.PathBuilder.Make();
     this.#current = null;
   }
 
@@ -187,11 +188,11 @@ export class SkiaContext2D {
   }
 
   fill() {
-    if (this.#path) this.#canvas?.drawPath(this.#path, this.#paint('fill'));
+    if (this.#path) this.#canvas?.drawPath(this.#path.build(), this.#paint('fill'));
   }
 
   stroke() {
-    if (this.#path) this.#canvas?.drawPath(this.#path, this.#paint('stroke'));
+    if (this.#path) this.#canvas?.drawPath(this.#path.build(), this.#paint('stroke'));
   }
 
   fillRect(x, y, width, height) {
@@ -199,7 +200,9 @@ export class SkiaContext2D {
   }
 
   clip() {
-    if (this.#path) this.#canvas?.clipPath(this.#path, this.#skia.ClipOp.Intersect, true);
+    if (this.#path) {
+      this.#canvas?.clipPath(this.#path.build(), this.#skia.ClipOp.Intersect, true);
+    }
   }
 
   fillText(text, x, y) {
