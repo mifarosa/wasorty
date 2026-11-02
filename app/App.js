@@ -176,7 +176,8 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    // absoluteFillObject is gone from React Native 0.88; absoluteFill is the same style.
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(5,3,20,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
