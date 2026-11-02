@@ -10,7 +10,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.mifarosa.wasorty",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleLocalizations": ["en", "tr"]
       }
     },
     "android": {
