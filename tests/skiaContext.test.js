@@ -27,14 +27,15 @@ function fakeSkia() {
         finishRecordingAsPicture: () => ({ log: log.splice(0) })
       }),
       XYWHRect: (x, y, width, height) => ({ x, y, width, height }),
-      Path: {
+      // As in React Native Skia 2: a path is immutable, a builder makes it (a path has no moveTo).
+      PathBuilder: {
         Make: () => {
           const ops = [];
-          const path = { ops };
+          const builder = { build: () => ({ ops: [...ops] }) };
           for (const name of ['moveTo', 'lineTo', 'cubicTo', 'close']) {
-            path[name] = (...args) => ops.push([name, ...args]);
+            builder[name] = (...args) => ops.push([name, ...args]);
           }
-          return path;
+          return builder;
         }
       },
       Paint: () => {
