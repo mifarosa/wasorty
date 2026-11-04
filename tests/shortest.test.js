@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createLevelPuzzle } from '../src/game/levels.js';
 import { Board } from '../src/game/rules.js';
 import { fewestMoves, solveShortest } from '../src/game/shortest.js';
-import { MAX_STARS, starsFor, threeStarLimit, twoStarLimit } from '../src/game/stars.js';
+import { MAX_STARS, starLimits, starsFor } from '../src/game/stars.js';
 
 /** Fewest moves by brute force: a breadth-first search over every legal pour. */
 function bruteForceFewest(tubes, board) {
@@ -98,25 +98,28 @@ describe('fewestMoves', () => {
 });
 
 describe('stars', () => {
-  it('gives every star for the fewest moves, or fewer still', () => {
+  it('gives three stars for the fewest moves, or one more', () => {
     expect(starsFor(21, 21)).toBe(MAX_STARS);
     expect(starsFor(20, 21)).toBe(MAX_STARS);
+    expect(starsFor(22, 21)).toBe(MAX_STARS);
+    expect(starsFor(10, 9)).toBe(MAX_STARS);
+    expect(starsFor(9, 8)).toBe(MAX_STARS);
   });
 
-  it('allows one move over for three stars in a long puzzle only', () => {
-    expect(starsFor(15, 14)).toBe(MAX_STARS);
-    expect(starsFor(16, 14)).toBe(2);
-    expect(starsFor(9, 8)).toBe(2);
-    expect(threeStarLimit(9)).toBe(9);
-    expect(threeStarLimit(10)).toBe(11);
+  it('gives two stars up to three moves over, and one star for the next three', () => {
+    expect(starsFor(11, 9)).toBe(2);
+    expect(starsFor(12, 9)).toBe(2);
+    expect(starsFor(13, 9)).toBe(1);
+    expect(starsFor(15, 9)).toBe(1);
   });
 
-  it('gives two stars a few moves over, and one star beyond', () => {
-    expect(twoStarLimit(9)).toBe(11);
-    expect(twoStarLimit(21)).toBe(26);
-    expect(starsFor(26, 21)).toBe(2);
-    expect(starsFor(27, 21)).toBe(1);
-    expect(starsFor(10, 9)).toBe(2);
-    expect(starsFor(12, 9)).toBe(1);
+  it('gives no star beyond six moves over', () => {
+    expect(starsFor(16, 9)).toBe(0);
+    expect(starsFor(100, 9)).toBe(0);
+  });
+
+  it('tells the most moves that earn each number of stars', () => {
+    expect(starLimits(9)).toEqual({ three: 10, two: 12, one: 15 });
+    expect(starLimits(21)).toEqual({ three: 22, two: 24, one: 27 });
   });
 });

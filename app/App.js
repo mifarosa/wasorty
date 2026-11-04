@@ -5,7 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { DailyBoard } from '../src/app/dailyBoard.js';
 import { GameController } from '../src/app/controller.js';
 import { loadDailyRecord, saveDailyRecord } from '../src/app/dailyResults.js';
-import { getLanguage } from '../src/app/i18n.js';
+import { getLanguage, setLanguage } from '../src/app/i18n.js';
 import { loadProgress, saveProgress } from '../src/app/progress.js';
 import { loadSettings, saveSettings } from '../src/app/settings.js';
 import { fewestMovesOfPuzzle, solutionOfPuzzle } from '../src/game/puzzleFewest.js';
@@ -15,8 +15,10 @@ import { NativeHud } from './src/NativeHud.js';
 import { NativeMenu, NativeRules } from './src/NativeDialogs.js';
 import { RulesScreen } from './src/RulesScreen.js';
 import { SettingsScreen } from './src/SettingsScreen.js';
+import { Splash } from './src/Splash.js';
 import { WinCard } from './src/WinCard.js';
 import { words } from './src/appTexts.js';
+import { LETTERS } from './src/brand.js';
 import { deviceLocale } from './src/deviceLocale.js';
 import { createFeedback } from './src/feedback.js';
 import { chooseLanguage } from './src/language.js';
@@ -25,16 +27,6 @@ import { colorsOf, lookOf } from './src/theme.js';
 
 // The phone's language, unless the player picked one: set before anything is drawn.
 chooseLanguage(storage, deviceLocale());
-
-const LETTERS = [
-  ['W', '#ef4444'],
-  ['a', '#fb923c'],
-  ['s', '#fde047'],
-  ['o', '#22c55e'],
-  ['r', '#38bdf8'],
-  ['t', '#6366f1'],
-  ['y', '#d946ef']
-];
 
 /** Works out something heavy after the screen has had a moment to draw. */
 const later = (work) => new Promise((resolve) => setTimeout(() => resolve(work()), 30));
@@ -50,6 +42,7 @@ export default function App() {
   const [menuModel, setMenuModel] = useState(null);
   const [rulesModel, setRulesModel] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [splash, setSplash] = useState(true);
   // The language the game runs in is the one it started with; the setting shows the pick.
   const [settings, setSettings] = useState(() => ({
     ...loadSettings(storage),
@@ -82,11 +75,15 @@ export default function App() {
   }, [settings.theme, settings.symbols, scheme]);
 
   const changeSettings = useCallback((change) => {
-    setSettings((current) => {
-      const next = { ...current, ...change };
-      saveSettings(next, storage);
-      return next;
-    });
+    const next = { ...latest.current.settings, ...change };
+    saveSettings(next, storage);
+    // Every text is read when it is drawn, so the new language shows as soon as the screens
+    // and the game's title bar are drawn again.
+    if (change.language && change.language !== getLanguage()) {
+      setLanguage(change.language);
+      controller.current?.refreshTexts();
+    }
+    setSettings(next);
   }, []);
 
   // The board reports back once it has a size; the game starts then.
@@ -222,6 +219,8 @@ export default function App() {
             onClose={() => setSettingsOpen(false)}
           />
         ) : null}
+
+        {splash ? <Splash colors={colors} onDone={() => setSplash(false)} /> : null}
       </SafeAreaView>
     </SafeAreaProvider>
   );

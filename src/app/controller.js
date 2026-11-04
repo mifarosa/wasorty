@@ -16,7 +16,7 @@ import {
 import { boardOf, rulesOf } from '../game/customPuzzle.js';
 import { GameSession } from '../game/session.js';
 import { dailyScore } from '../game/dailyScore.js';
-import { MAX_STARS, starsFor, threeStarLimit, twoStarLimit } from '../game/stars.js';
+import { MAX_STARS, starLimits, starsFor } from '../game/stars.js';
 import { localDateKey } from './calendar.js';
 import { RULES_FROM_DAY } from './dailyResults.js';
 import {
@@ -260,17 +260,7 @@ export class GameController {
       title: this.#title(),
       info: true,
       rules: ['basics', ...rules].map((rule) => this.#describeRule(rule)),
-      stars: fewest
-        ? [3, 2, 1].map((stars) => ({
-            stars,
-            text: texts.starRule(
-              stars,
-              fewest.moves,
-              threeStarLimit(fewest.moves),
-              twoStarLimit(fewest.moves)
-            )
-          }))
-        : null,
+      stars: fewest ? this.#starRules(fewest.moves) : null,
       starsPending: texts.fewestPending,
       supplies: [
         texts.undoSupply(settings.undoLimit, this.#session.undosLeft),
@@ -286,6 +276,24 @@ export class GameController {
 
   closeRules() {
     this.#rules.hide();
+  }
+
+  /**
+   * Draws the texts again, e.g. after the language was changed: every text is read when it is
+   * drawn, so only what is on the screen already needs to be made again.
+   */
+  refreshTexts() {
+    this.#refreshHud();
+  }
+
+  /** What each star takes. The daily puzzle always keeps one star (its results are shared). */
+  #starRules(fewest) {
+    const limits = starLimits(fewest);
+    const daily = this.#isDaily();
+    return (daily ? [3, 2, 1] : [3, 2, 1, 0]).map((stars) => ({
+      stars,
+      text: daily && stars === 1 ? texts.starRuleMore(limits.two) : texts.starRule(stars, limits)
+    }));
   }
 
   #describeRule(rule) {
@@ -657,7 +665,10 @@ export class GameController {
     this.#feedback.win();
     const [fewest] = await Promise.all([this.#fewest, this.#scene.celebrate()]);
     const fewestMoves = fewest?.moves ?? moves;
-    const stars = starsFor(moves, fewestMoves);
+    // A daily result always has a star: the leaderboard keeps results of one to three.
+    const stars = this.#isDaily()
+      ? Math.max(1, starsFor(moves, fewestMoves))
+      : starsFor(moves, fewestMoves);
     let attempts = null;
     let shareText = null;
     let offerWatch = false;

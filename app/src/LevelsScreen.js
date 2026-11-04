@@ -133,8 +133,9 @@ function Tile({ level, color, colors, size, onPress }) {
       ]}
     >
       <Text style={{ fontWeight: '800', fontSize: 16, color: solved ? '#0b1430' : colors.ink }}>
-        {locked ? '🔒' : level.level}
+        {level.level}
       </Text>
+      {locked ? <Text style={{ fontSize: 11 }}>🔒</Text> : null}
       {solved && level.stars > 0 ? (
         <Text style={{ fontSize: 8, color: '#0b1430' }}>{'★'.repeat(level.stars)}</Text>
       ) : null}

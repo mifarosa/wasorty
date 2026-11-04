@@ -60,9 +60,9 @@ describe('the language of the app', () => {
         'settings',
         'levels',
         'close',
+        'tagline',
         'theme',
         'language',
-        'languageNote',
         'haptics',
         'symbols',
         'symbolsNote'

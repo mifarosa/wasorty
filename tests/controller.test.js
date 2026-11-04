@@ -697,7 +697,7 @@ describe('GameController', () => {
       await controller.tapTube(target);
     }
 
-    expect(lastWin()).toMatchObject({ moves: 10, fewest: 9, stars: 2 });
+    expect(lastWin()).toMatchObject({ moves: 10, fewest: 9, stars: 3 });
   });
 
   it('does not give a hint back on undo, and says how to earn one when none is left', async () => {
@@ -948,8 +948,9 @@ describe('GameController', () => {
         })),
         stars: [
           { stars: 3, text: `${fewest + 1} hamleye kadar` },
-          { stars: 2, text: expect.stringMatching(/^\d+ hamleye kadar$/) },
-          { stars: 1, text: 'Daha fazla hamle' }
+          { stars: 2, text: `${fewest + 3} hamleye kadar` },
+          { stars: 1, text: `${fewest + 6} hamleye kadar` },
+          { stars: 0, text: `${fewest + 6} hamleden fazla` }
         ],
         supplies: [
           'Bu seviyede 3 geri alma hakkından 3 tanesi kaldı.',
