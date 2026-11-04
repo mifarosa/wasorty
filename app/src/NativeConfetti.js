@@ -7,6 +7,10 @@ import { parseColor } from './color.js';
 /** How long a piece lives and how long it takes to fade at the end (as on the website). */
 const MAX_AGE_S = 5;
 const FADE_S = 1;
+/** The least time between two frames of confetti. */
+const FRAME_MS = 30;
+/** Every other piece of the website's burst: half of them look the same on a phone. */
+const KEEP_EVERY = 2;
 
 /**
  * Confetti shot from both bottom corners over the whole screen, with the website's own
@@ -28,6 +32,11 @@ export function NativeConfetti({ burst, colors }) {
 
   useEffect(() => {
     const tick = (time) => {
+      // Thirty frames a second are plenty for confetti, and leave the game room to breathe.
+      if (last.current !== null && time - last.current < FRAME_MS) {
+        frame.current = requestAnimationFrame(tick);
+        return;
+      }
       const dt = last.current === null ? 0 : Math.min(0.05, (time - last.current) / 1000);
       last.current = time;
       pieces.current = advancePieces(pieces.current, dt, size.current);
@@ -77,21 +86,32 @@ export function NativeConfetti({ burst, colors }) {
   );
 }
 
+/** The paints of the pieces: one for each color, made once. */
+const paints = new Map();
+function paintOf(color) {
+  let paint = paints.get(color);
+  if (!paint) {
+    const [r, g, b] = parseColor(color);
+    paint = Skia.Skia.Paint();
+    paint.setAntiAlias(true);
+    paint.setColor(
+      Skia.Skia.Color(`rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`)
+    );
+    paints.set(color, paint);
+  }
+  return paint;
+}
+
 /** One frame: every piece turned, squashed along its length as if it flipped, and faded. */
 function draw(pieces, { width, height }) {
   const recorder = Skia.Skia.PictureRecorder();
   const canvas = recorder.beginRecording(Skia.Skia.XYWHRect(0, 0, width, height));
   for (const piece of pieces) {
     if (piece.age < 0) continue;
-    const [r, g, b] = parseColor(piece.color);
+    const paint = paintOf(piece.color);
+    // Only the last second fades; the rest of the time the piece is whole.
     const opacity = Math.max(0, Math.min(1, (MAX_AGE_S - piece.age) / FADE_S));
-    const paint = Skia.Skia.Paint();
-    paint.setAntiAlias(true);
-    paint.setColor(
-      Skia.Skia.Color(
-        `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`
-      )
-    );
+    paint.setAlphaf(opacity);
     canvas.save();
     canvas.translate(piece.x, piece.y);
     canvas.rotate((piece.angle * 180) / Math.PI, 0, 0);

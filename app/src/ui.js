@@ -49,20 +49,24 @@ export function Sheet({ title, colors, onClose, children }) {
  * `onDismiss`, a tap on the veil (outside the card) closes it.
  */
 export function Dialog({ colors, onDismiss, children }) {
+  const card = (
+    <View
+      // The card takes its own touches, so a tap on it does not reach the veil.
+      onStartShouldSetResponder={onDismiss ? () => true : undefined}
+      style={[styles.card, { backgroundColor: colors.panel, borderColor: colors.line }]}
+    >
+      {children}
+    </View>
+  );
+  // Without a way out the veil is plain, as it was: nothing around the card takes a touch.
+  if (!onDismiss) return <View style={[StyleSheet.absoluteFill, styles.veil]}>{card}</View>;
   return (
     <Pressable
       style={[StyleSheet.absoluteFill, styles.veil]}
       onPress={onDismiss}
-      disabled={!onDismiss}
       accessible={false}
     >
-      {/* The card takes its own touches, so a tap on it does not reach the veil. */}
-      <View
-        onStartShouldSetResponder={() => true}
-        style={[styles.card, { backgroundColor: colors.panel, borderColor: colors.line }]}
-      >
-        {children}
-      </View>
+      {card}
     </Pressable>
   );
 }

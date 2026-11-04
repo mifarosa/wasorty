@@ -2,6 +2,14 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { words } from './appTexts.js';
 import { LETTERS, SITE_NAME } from './brand.js';
+import { parseColor } from './color.js';
+
+/** A darker shade of a color, for the edge under a letter. */
+function shade(color) {
+  const [r, g, b] = parseColor(color);
+  const part = (value) => Math.round(value * 255 * 0.55);
+  return `rgb(${part(r)}, ${part(g)}, ${part(b)})`;
+}
 
 /** How long the name stays before it fades away by itself. */
 const STAY_MS = 2600;
@@ -22,14 +30,18 @@ export function Splash({ colors, onDone }) {
   const site = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   const closing = useRef(false);
+  // The app draws itself again whenever the game says something; that must not start the
+  // name over, so the latest `onDone` is kept here and the animations run once.
+  const done = useRef(onDone);
+  done.current = onDone;
 
   const close = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
     Animated.timing(fade, { toValue: 0, duration: 450, useNativeDriver: true }).start(() =>
-      onDone()
+      done.current()
     );
-  }, [fade, onDone]);
+  }, [fade]);
 
   useEffect(() => {
     Animated.parallel([
@@ -76,9 +88,13 @@ export function Splash({ colors, onDone }) {
                   fontSize: size,
                   fontWeight: '800',
                   color,
-                  textShadowColor: color,
-                  textShadowRadius: 18,
-                  textShadowOffset: { width: 0, height: 3 },
+                  // A hard edge under the letter, like the website's, instead of a blur: iOS
+                  // cuts a wide blur off at the box of the text.
+                  lineHeight: Math.round(size * 1.2),
+                  paddingHorizontal: 1,
+                  textShadowColor: shade(color),
+                  textShadowRadius: 0,
+                  textShadowOffset: { width: 0, height: Math.max(3, Math.round(size * 0.06)) },
                   opacity: drops[index].interpolate({
                     inputRange: [0, 0.35],
                     outputRange: [0, 1],
