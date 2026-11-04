@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { words } from './appTexts.js';
-import { LETTERS } from './brand.js';
+import { LETTERS, SITE_NAME } from './brand.js';
 
 /** How long the name stays before it fades away by itself. */
 const STAY_MS = 2600;
@@ -19,6 +19,7 @@ export function Splash({ colors, onDone }) {
   const drops = useRef(LETTERS.map(() => new Animated.Value(0))).current;
   const hops = useRef(LETTERS.map(() => new Animated.Value(0))).current;
   const tagline = useRef(new Animated.Value(0)).current;
+  const site = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   const closing = useRef(false);
 
@@ -39,7 +40,8 @@ export function Splash({ colors, onDone }) {
           Animated.spring(drop, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true })
         )
       ),
-      Animated.timing(tagline, { toValue: 1, duration: 500, delay: 650, useNativeDriver: true })
+      Animated.timing(tagline, { toValue: 1, duration: 500, delay: 650, useNativeDriver: true }),
+      Animated.timing(site, { toValue: 1, duration: 600, delay: 300, useNativeDriver: true })
     ]).start(() => {
       // A wave runs through the name.
       Animated.stagger(
@@ -54,7 +56,7 @@ export function Splash({ colors, onDone }) {
     });
     const timer = setTimeout(close, STAY_MS);
     return () => clearTimeout(timer);
-  }, [drops, hops, tagline, close]);
+  }, [drops, hops, tagline, site, close]);
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
@@ -101,6 +103,9 @@ export function Splash({ colors, onDone }) {
         <Animated.View style={{ opacity: tagline }}>
           <Text style={[styles.tagline, { color: colors.muted }]}>{words.tagline}</Text>
         </Animated.View>
+        <Animated.Text style={[styles.site, { color: colors.muted, opacity: site }]}>
+          {SITE_NAME}
+        </Animated.Text>
       </Pressable>
     </Animated.View>
   );
@@ -109,5 +114,6 @@ export function Splash({ colors, onDone }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   name: { flexDirection: 'row' },
-  tagline: { fontSize: 16 }
+  tagline: { fontSize: 16 },
+  site: { position: 'absolute', bottom: 56, fontSize: 15, fontWeight: '700', letterSpacing: 1.2 }
 });

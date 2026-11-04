@@ -9,7 +9,7 @@ import { Button, Dialog, Stars } from './ui.js';
  */
 export function RulesScreen({ model, colors, onClose }) {
   return (
-    <Dialog colors={colors}>
+    <Dialog colors={colors} onDismiss={onClose}>
       <Text style={[styles.title, { color: colors.ink }]}>{model.title}</Text>
       <ScrollView style={styles.scroll} contentContainerStyle={{ gap: 14 }}>
         <Section heading={texts.rulesHeading} colors={colors}>

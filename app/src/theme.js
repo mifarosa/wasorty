@@ -90,6 +90,11 @@ export function colorsOf(themeId, scheme) {
   return 'dark' in colors ? (scheme === 'light' ? colors.light : colors.dark) : colors;
 }
 
+/** The liquid colors of a theme. */
+export function paletteOf(themeId) {
+  return (THEMES[themeId] ?? THEMES.classic).palette;
+}
+
 /** How the board is drawn in a theme (see TubeScene.setLook). */
 export function lookOf(themeId, scheme, symbols = false) {
   const colors = colorsOf(themeId, scheme);

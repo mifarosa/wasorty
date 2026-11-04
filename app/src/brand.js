@@ -8,3 +8,7 @@ export const LETTERS = [
   ['t', '#6366f1'],
   ['y', '#d946ef']
 ];
+
+/** Who makes the game. */
+export const SITE_NAME = 'mifarosa.com';
+export const SITE_URL = 'https://mifarosa.com';
