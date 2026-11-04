@@ -75,6 +75,11 @@ describe('normalizeProgress', () => {
     });
   });
 
+  it('keeps a solution that earned no star', () => {
+    const records = { 3: { best: 0, attempts: [{ moves: 40, stars: 0 }] } };
+    expect(normalizeProgress({ records }).records).toEqual(records);
+  });
+
   it('replaces invalid fields with the initial values', () => {
     expect(normalizeProgress({ mode: 'race', solved: -2, current: 'x', dailyDone: 5 })).toEqual(
       INITIAL_PROGRESS

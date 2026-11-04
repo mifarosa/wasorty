@@ -92,7 +92,7 @@ function normalizeRecords(saved) {
           .slice(-ATTEMPTS_KEPT)
       : [];
     const best = Math.max(isStars(record.best) ? record.best : 0, ...attempts.map((a) => a.stars));
-    if (best > 0) records[level] = { best, attempts };
+    if (best > 0 || attempts.length > 0) records[level] = { best, attempts };
   }
   return records;
 }
@@ -102,7 +102,7 @@ function isCount(value) {
 }
 
 function isStars(value) {
-  return Number.isInteger(value) && value >= 1 && value <= MAX_STARS;
+  return Number.isInteger(value) && value >= 0 && value <= MAX_STARS;
 }
 
 /**

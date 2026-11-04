@@ -6,7 +6,7 @@ import { Sheet } from './ui.js';
 
 /**
  * The settings: the theme, the language, vibration and symbols on the colors. A change applies
- * at once, except the language, which takes the next start (the game's texts are read once).
+ * at once.
  */
 export function SettingsScreen({ settings, colors, onChange, onClose }) {
   return (
@@ -34,7 +34,6 @@ export function SettingsScreen({ settings, colors, onChange, onClose }) {
               onPress={() => onChange({ language: id })}
             />
           ))}
-          <Text style={{ color: colors.muted, fontSize: 13 }}>{words.languageNote}</Text>
         </Group>
 
         <Group colors={colors}>
