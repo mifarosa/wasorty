@@ -1,24 +1,36 @@
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+  useColorScheme
+} from 'react-native';
 import { LANGUAGES } from '../../src/app/i18n.js';
 import { words } from './appTexts.js';
-import { THEME_IDS } from './theme.js';
-import { Sheet } from './ui.js';
+import { SITE_NAME, SITE_URL } from './brand.js';
+import { THEME_IDS, colorsOf, paletteOf } from './theme.js';
+import { Sheet, useTap } from './ui.js';
 
 /**
- * The settings: the theme, the language, vibration and symbols on the colors. A change applies
- * at once.
+ * The settings: the theme, the language, vibration and symbols on the colors, and who makes
+ * the game. A change applies at once.
  */
 export function SettingsScreen({ settings, colors, onChange, onClose }) {
+  const scheme = useColorScheme();
   return (
     <Sheet title={words.settings} colors={colors} onClose={onClose}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 22 }}>
         <Group title={words.theme} colors={colors}>
           {THEME_IDS.map((id) => (
-            <Choice
+            <ThemeChoice
               key={id}
               label={words.themeNames[id]}
+              id={id}
+              scheme={scheme}
               chosen={settings.theme === id}
-              colors={colors}
               onPress={() => onChange({ theme: id })}
             />
           ))}
@@ -51,6 +63,14 @@ export function SettingsScreen({ settings, colors, onChange, onClose }) {
             onChange={(symbols) => onChange({ symbols })}
           />
         </Group>
+
+        <Group title={words.aboutTitle} colors={colors}>
+          <View style={[styles.about, { backgroundColor: colors.panel, borderColor: colors.line }]}>
+            <Text style={[styles.aboutName, { color: colors.ink }]}>{SITE_NAME}</Text>
+            <Text style={{ color: colors.muted }}>{words.aboutText}</Text>
+            <SiteButton colors={colors} />
+          </View>
+        </Group>
       </ScrollView>
     </Sheet>
   );
@@ -65,10 +85,52 @@ function Group({ title, colors, children }) {
   );
 }
 
-function Choice({ label, chosen, colors, onPress }) {
+/** A theme, shown in its own colors: its background, its ink and a drop of each liquid. */
+function ThemeChoice({ id, label, scheme, chosen, onPress }) {
+  const tap = useTap();
+  const theme = colorsOf(id, scheme);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: chosen }}
+      style={[
+        styles.choice,
+        {
+          backgroundColor: theme.bgBottom,
+          borderColor: chosen ? theme.accent : theme.line,
+          borderWidth: chosen ? 3 : 2
+        }
+      ]}
+    >
+      <View style={{ flex: 1, gap: 8 }}>
+        <Text style={{ color: theme.ink, fontWeight: '800', fontSize: 16 }}>{label}</Text>
+        <View style={styles.drops}>
+          {paletteOf(id)
+            .slice(0, 7)
+            .map((color, index) => (
+              <View key={index} style={[styles.drop, { backgroundColor: color }]} />
+            ))}
+        </View>
+      </View>
+      <Text style={{ color: theme.accent, fontWeight: '800', fontSize: 18 }}>
+        {chosen ? '✓' : ''}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Choice({ label, chosen, colors, onPress }) {
+  const tap = useTap();
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        onPress();
+      }}
       accessibilityRole="radio"
       accessibilityState={{ selected: chosen }}
       style={[
@@ -85,14 +147,39 @@ function Choice({ label, chosen, colors, onPress }) {
 }
 
 function Toggle({ label, note, value, colors, onChange }) {
+  const tap = useTap();
   return (
     <View style={[styles.choice, { backgroundColor: colors.panel, borderColor: colors.line }]}>
       <View style={{ flex: 1, gap: 2, paddingRight: 12 }}>
         <Text style={{ color: colors.ink, fontWeight: '600', fontSize: 16 }}>{label}</Text>
         {note ? <Text style={{ color: colors.muted, fontSize: 13 }}>{note}</Text> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: colors.accent }} />
+      <Switch
+        value={value}
+        onValueChange={(next) => {
+          tap();
+          onChange(next);
+        }}
+        trackColor={{ true: colors.accent }}
+      />
     </View>
+  );
+}
+
+function SiteButton({ colors }) {
+  const tap = useTap();
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        // A phone that cannot open the page has nothing to tell the player about it.
+        Linking.openURL(SITE_URL).catch(() => {});
+      }}
+      accessibilityRole="link"
+      style={[styles.site, { backgroundColor: colors.accent }]}
+    >
+      <Text style={{ color: colors.accentInk, fontWeight: '800' }}>{words.visitSite}</Text>
+    </Pressable>
   );
 }
 
@@ -106,5 +193,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingHorizontal: 16,
     paddingVertical: 14
+  },
+  drops: { flexDirection: 'row', gap: 6 },
+  drop: { width: 18, height: 18, borderRadius: 9 },
+  about: { borderRadius: 14, borderWidth: 2, padding: 16, gap: 6 },
+  aboutName: { fontSize: 22, fontWeight: '800' },
+  site: {
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginTop: 6
   }
 });

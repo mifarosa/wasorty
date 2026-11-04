@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
-import { Sheet, Stars } from './ui.js';
+import { Sheet, Stars, useTap } from './ui.js';
 
 const COLUMNS = 6;
 const GAP = 8;
@@ -13,6 +13,7 @@ const SIDE = 16;
  * what the game hands it (see LevelMenuModel in src/app/levelMenu.js) and reports the pick.
  */
 export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose }) {
+  const tap = useTap();
   const { width } = useWindowDimensions();
   const size = Math.floor((width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
   const scroll = useRef(null);
@@ -21,7 +22,14 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
   return (
     <Sheet title={words.levels} colors={colors} onClose={onClose}>
       <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 18 }}>
-        <DailyCard daily={model.daily} colors={colors} onPress={onPickDaily} />
+        <DailyCard
+          daily={model.daily}
+          colors={colors}
+          onPress={() => {
+            tap();
+            onPickDaily();
+          }}
+        />
         {model.chapters.map((chapter) => (
           <View
             key={chapter.id}
@@ -32,7 +40,15 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
               scroll.current?.scrollTo({ y: Math.max(0, event.nativeEvent.layout.y - 12) });
             }}
           >
-            <Chapter chapter={chapter} colors={colors} size={size} onPickLevel={onPickLevel} />
+            <Chapter
+              chapter={chapter}
+              colors={colors}
+              size={size}
+              onPickLevel={(level) => {
+                tap();
+                onPickLevel(level);
+              }}
+            />
           </View>
         ))}
       </ScrollView>

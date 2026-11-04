@@ -1,6 +1,11 @@
+import { createContext, useContext } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { words } from './appTexts.js';
+
+/** What a tap on a button of the app does besides its work: a small vibration (see App.js). */
+export const TapContext = createContext(() => {});
+export const useTap = () => useContext(TapContext);
 
 /** Earned stars, then the ones that are not (always three together). */
 export function Stars({ count, colors, size = 18 }) {
@@ -14,13 +19,17 @@ export function Stars({ count, colors, size = 18 }) {
 
 /** A full screen over the game, with a title and a close button. */
 export function Sheet({ title, colors, onClose, children }) {
+  const tap = useTap();
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgBottom }]}>
       <SafeAreaView style={styles.fill}>
         <View style={styles.sheetHeader}>
           <Text style={[styles.sheetTitle, { color: colors.ink }]}>{title}</Text>
           <Pressable
-            onPress={onClose}
+            onPress={() => {
+              tap();
+              onClose();
+            }}
             hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel={words.close}
@@ -35,22 +44,42 @@ export function Sheet({ title, colors, onClose, children }) {
   );
 }
 
-/** A card in the middle of the screen over a dark veil, like the website's dialogs. */
-export function Dialog({ colors, children }) {
-  return (
-    <View style={[StyleSheet.absoluteFill, styles.veil]}>
-      <View style={[styles.card, { backgroundColor: colors.panel, borderColor: colors.line }]}>
-        {children}
-      </View>
+/**
+ * A card in the middle of the screen over a dark veil, like the website's dialogs. With
+ * `onDismiss`, a tap on the veil (outside the card) closes it.
+ */
+export function Dialog({ colors, onDismiss, children }) {
+  const card = (
+    <View
+      // The card takes its own touches, so a tap on it does not reach the veil.
+      onStartShouldSetResponder={onDismiss ? () => true : undefined}
+      style={[styles.card, { backgroundColor: colors.panel, borderColor: colors.line }]}
+    >
+      {children}
     </View>
+  );
+  // Without a way out the veil is plain, as it was: nothing around the card takes a touch.
+  if (!onDismiss) return <View style={[StyleSheet.absoluteFill, styles.veil]}>{card}</View>;
+  return (
+    <Pressable
+      style={[StyleSheet.absoluteFill, styles.veil]}
+      onPress={onDismiss}
+      accessible={false}
+    >
+      {card}
+    </Pressable>
   );
 }
 
 /** A button: `primary` is filled with the accent color, the others have an outline. */
 export function Button({ label, onPress, colors, primary = false, link = false }) {
+  const tap = useTap();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        tap();
+        onPress();
+      }}
       accessibilityRole="button"
       style={[
         styles.button,
