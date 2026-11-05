@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { texts } from '../../src/app/texts.js';
 import { words } from './appTexts.js';
@@ -8,6 +9,19 @@ import { Button, Dialog, Stars } from './ui.js';
  * the last solutions, and what to do next (see Hud.showWin in src/app/hud.js for the data).
  */
 export function WinCard({ win, colors, actions }) {
+  // 'idle' | 'loading' | 'done' (hints were added) | 'closed' | 'unavailable'
+  const [ad, setAd] = useState('idle');
+
+  async function watchAd() {
+    if (ad === 'loading') return;
+    setAd('loading');
+    const result = await actions.onWatchAd();
+    setAd(result === 'rewarded' ? 'done' : result);
+  }
+
+  const adLabel = { loading: words.adLoading, done: words.hintsAdded }[ad] ?? words.watchAdHints;
+  const adNote = { closed: words.adNotFinished, unavailable: words.adUnavailable }[ad];
+
   return (
     <Dialog colors={colors}>
       <ScrollView contentContainerStyle={styles.body}>
@@ -39,6 +53,8 @@ export function WinCard({ win, colors, actions }) {
           <Button label={texts.replay} onPress={actions.onReplay} colors={colors} />
           <Button label={win.continueLabel} onPress={actions.onContinue} colors={colors} primary />
         </View>
+        <Button label={adLabel} onPress={watchAd} colors={colors} />
+        {adNote ? <Text style={{ color: colors.muted, textAlign: 'center' }}>{adNote}</Text> : null}
         <View style={styles.actions}>
           {win.watch ? (
             <Button label={texts.watchSolution} onPress={actions.onWatch} colors={colors} link />

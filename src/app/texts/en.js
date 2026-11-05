@@ -155,6 +155,8 @@ export const en = {
   newsDailyRules:
     "What's new: the daily puzzle now has special rules too. Today's puzzle changed as well; your earlier results stay.",
   earnedHint: 'Daily puzzle: +1 hint!',
+  rewardHints: (count) => `+${count} hints`,
+  rewardUndos: (count) => `+${count} spare undos`,
   attemptsTitle: 'Recent attempts',
   attemptMoves: (count) => moves(count),
   replay: 'Play again',

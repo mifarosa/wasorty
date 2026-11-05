@@ -13,6 +13,7 @@ import { confettiColors } from '../src/scene/palette.js';
 import { LevelsScreen } from './src/LevelsScreen.js';
 import { NativeBoard } from './src/NativeBoard.js';
 import { NativeConfetti } from './src/NativeConfetti.js';
+import { OfferDialog } from './src/OfferDialog.js';
 import { NativeHud } from './src/NativeHud.js';
 import { NativeMenu, NativeRules } from './src/NativeDialogs.js';
 import { RulesScreen } from './src/RulesScreen.js';
@@ -20,6 +21,7 @@ import { SettingsScreen } from './src/SettingsScreen.js';
 import { Splash } from './src/Splash.js';
 import { TapContext } from './src/ui.js';
 import { WinCard } from './src/WinCard.js';
+import { startAds, watchRewardedAd } from './src/ads.js';
 import { words } from './src/appTexts.js';
 import { LETTERS } from './src/brand.js';
 import { deviceLocale } from './src/deviceLocale.js';
@@ -126,6 +128,11 @@ export default function App() {
     [hud, menu, rules, feedback, dailyBoard]
   );
 
+  // The ads SDK starts once, with the first ad on its way.
+  useEffect(() => {
+    startAds();
+  }, []);
+
   const share = useCallback(async (message) => {
     try {
       await Share.share({ message });
@@ -135,7 +142,7 @@ export default function App() {
   }, []);
 
   const game = () => controller.current;
-  const { view, toast, win } = state;
+  const { view, toast, win, offer } = state;
   return (
     <SafeAreaProvider>
       <TapContext.Provider value={feedback.tap}>
@@ -184,7 +191,7 @@ export default function App() {
               color="#38bdf8"
               label={words.undo}
               count={view?.undoCount}
-              disabled={!view?.canUndo}
+              disabled={!view?.canUndo && !view?.undoOffer}
               styles={styles}
               onPress={() => game()?.undo()}
             />
@@ -233,7 +240,27 @@ export default function App() {
                 onContinue: () => game()?.continueAfterWin(),
                 onWatch: () => game()?.watchSolution(),
                 onLevels: () => game()?.continueToLevels(),
-                onShare: share
+                onShare: share,
+                // The ad is watched here; the game only hears whether it paid.
+                onWatchAd: async () => {
+                  const result = await watchRewardedAd();
+                  if (result === 'rewarded') game()?.grantReward('savedHint');
+                  return result;
+                }
+              }}
+            />
+          ) : null}
+
+          {offer ? (
+            <OfferDialog
+              kind={offer.kind}
+              colors={colors}
+              onClose={() => hud.closeOffer()}
+              onRewarded={() => {
+                hud.closeOffer();
+                game()?.grantReward(offer.kind);
+                // The hint the player asked for is shown at once.
+                if (offer.kind === 'hint') game()?.showHint();
               }}
             />
           ) : null}

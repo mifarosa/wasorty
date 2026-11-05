@@ -21,6 +21,16 @@
       },
       "package": "com.mifarosa.wasorty"
     },
-    "scheme": "wasorty"
+    "scheme": "wasorty",
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-1672861293331033~2198401773",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "skAdNetworkItems": ["cstr6suwn9.skadnetwork"]
+        }
+      ]
+    ]
   }
 }
