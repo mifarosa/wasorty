@@ -153,6 +153,8 @@ export const tr = {
   earnedUndo: '+1 ekstra geri alma',
   newsDailyRules:
     'Yenilik: günün bulmacasında artık özel kurallar da var. Bugünün bulmacası da değişti, eski sonuçların duruyor.',
+  rewardHints: (count) => `+${count} ipucu`,
+  rewardUndos: (count) => `+${count} ekstra geri alma`,
   earnedHint: 'Günün bulmacası: +1 ipucu!',
   attemptsTitle: 'Son denemeler',
   attemptMoves: (moves) => `${moves} hamle`,

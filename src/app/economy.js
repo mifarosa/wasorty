@@ -35,6 +35,23 @@ export function spendSpareUndo(progress) {
   return progress.spareUndos > 0 ? { ...progress, spareUndos: progress.spareUndos - 1 } : null;
 }
 
+/** How many hints (or spare undos) one rewarded ad gives. */
+export const AD_REWARD = 2;
+
+/** @param {import('./progress.js').Progress} progress @param {number} count */
+export function addHints(progress, count) {
+  return { ...progress, hints: progress.hints + count };
+}
+
+/**
+ * Spare undos from an ad; the stock still holds at most MAX_SPARE_UNDOS.
+ * @param {import('./progress.js').Progress} progress
+ * @param {number} count
+ */
+export function addSpareUndos(progress, count) {
+  return { ...progress, spareUndos: Math.min(MAX_SPARE_UNDOS, progress.spareUndos + count) };
+}
+
 /**
  * Notes a solution of a level in its record.
  * @param {import('./progress.js').Progress} progress

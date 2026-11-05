@@ -20,7 +20,10 @@ import { MAX_STARS, starLimits, starsFor } from '../game/stars.js';
 import { localDateKey } from './calendar.js';
 import { RULES_FROM_DAY } from './dailyResults.js';
 import {
+  AD_REWARD,
   MAX_SPARE_UNDOS,
+  addHints,
+  addSpareUndos,
   recordDailyWin,
   recordLevelWin,
   spendHint,
@@ -342,7 +345,11 @@ export class GameController {
    */
   undo() {
     const session = this.#session;
-    if (this.#animating || !this.#canUndo()) return;
+    if (this.#animating) return;
+    if (!this.#canUndo()) {
+      if (this.#undoOffer()) this.#hud.offerAd?.('undo');
+      return;
+    }
     if (this.#watch) {
       this.#hud.showToast(texts.watchNoUndo);
       return;
@@ -405,7 +412,10 @@ export class GameController {
       const daily = this.#isDaily() && !free;
       const left = daily ? this.#dailyHints : this.#progress.hints;
       if (!free && left === 0) {
-        this.#hud.showToast(texts.noHints, { long: true });
+        // An app can offer an ad for more hints; the website just says there are none.
+        if (this.#hud.offerAd?.('hint') !== true) {
+          this.#hud.showToast(texts.noHints, { long: true });
+        }
         return;
       }
       move = session.hint();
@@ -747,6 +757,44 @@ export class GameController {
   }
 
   /** Whether an undo is possible: within the level's limit, or with a spare undo. */
+  /**
+   * Whether the undos of this level are used up while there is a move to take back: the
+   * moment an app can offer more (an ad). The levels without a limit never come to it.
+   */
+  #undoOffer() {
+    const session = this.#session;
+    return (
+      this.#level !== null &&
+      !this.#watch &&
+      session.undosLeft === 0 &&
+      session.hasMoves &&
+      !this.#canUndo()
+    );
+  }
+
+  /**
+   * Gives what a rewarded ad promised: hints for the puzzle on the board ('hint'; in the daily
+   * puzzle they last until it is over), hints for the player's stock ('savedHint', from the win
+   * dialog) or spare undos ('undo').
+   * @param {'hint' | 'savedHint' | 'undo'} kind
+   * @param {number} [count]
+   */
+  grantReward(kind, count = AD_REWARD) {
+    if (kind === 'hint' && this.#isDaily()) {
+      this.#dailyHints += count;
+    } else if (kind === 'hint' || kind === 'savedHint') {
+      this.#setProgress(addHints(this.#progress, count));
+    } else if (kind === 'undo') {
+      this.#setProgress(addSpareUndos(this.#progress, count));
+    } else {
+      return;
+    }
+    if (kind !== 'savedHint') {
+      this.#hud.showToast(kind === 'undo' ? texts.rewardUndos(count) : texts.rewardHints(count));
+    }
+    this.#refreshHud();
+  }
+
   #canUndo() {
     const session = this.#session;
     return session.canUndo || (session.hasMoves && this.#spareUndos() > 0);
@@ -910,6 +958,7 @@ export class GameController {
             ? texts.moves(session.moveCount)
             : this.#levelSubtitle(session.moveCount),
       canUndo: this.#canUndo(),
+      undoOffer: this.#undoOffer(),
       undoCount: texts.undoCount(session.undosLeft, spare),
       undoLabel: texts.undoLabel(session.undosLeft, spare),
       hintCount: String(hints),

@@ -6,7 +6,7 @@
 export class NativeHud {
   #listeners = new Set();
   #toastTimer = null;
-  state = { view: null, toast: null, win: null };
+  state = { view: null, toast: null, win: null, offer: null };
 
   /** @param {(state: NativeHud['state']) => void} listener @returns {() => void} */
   subscribe(listener) {
@@ -30,6 +30,20 @@ export class NativeHud {
 
   hideWin() {
     this.#set({ win: null });
+  }
+
+  /**
+   * The game is out of hints or undos: the screen may offer an ad for more.
+   * @param {'hint' | 'undo'} kind
+   * @returns {true} the app takes care of it (the website's Hud has no such method)
+   */
+  offerAd(kind) {
+    this.#set({ offer: { kind } });
+    return true;
+  }
+
+  closeOffer() {
+    this.#set({ offer: null });
   }
 
   #set(change) {

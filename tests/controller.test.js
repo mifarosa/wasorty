@@ -145,6 +145,7 @@ describe('GameController', () => {
       title: 'Seviye 3',
       subtitle: 'Kolay · 0 hamle',
       canUndo: false,
+      undoOffer: false,
       undoCount: null,
       undoLabel: 'Geri al',
       hintCount: '2',
