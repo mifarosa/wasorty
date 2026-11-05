@@ -12,6 +12,7 @@ import { LANGUAGES } from '../../src/app/i18n.js';
 import { words } from './appTexts.js';
 import { SITE_NAME, SITE_URL } from './brand.js';
 import { THEME_IDS, colorsOf, paletteOf } from './theme.js';
+import { Icon } from './Icon.js';
 import { Sheet, useTap } from './ui.js';
 
 /**
@@ -116,9 +117,9 @@ function ThemeChoice({ id, label, scheme, chosen, onPress }) {
             ))}
         </View>
       </View>
-      <Text style={{ color: theme.accent, fontWeight: '800', fontSize: 18 }}>
-        {chosen ? '✓' : ''}
-      </Text>
+      <View style={{ width: 24 }}>
+        {chosen ? <Icon name="check" size={24} color={theme.accent} /> : null}
+      </View>
     </Pressable>
   );
 }
@@ -141,7 +142,9 @@ function Choice({ label, chosen, colors, onPress }) {
       <Text style={{ color: colors.ink, fontWeight: chosen ? '800' : '600', fontSize: 16 }}>
         {label}
       </Text>
-      <Text style={{ color: colors.accent, fontWeight: '800' }}>{chosen ? '✓' : ''}</Text>
+      <View style={{ width: 24 }}>
+        {chosen ? <Icon name="check" size={24} color={colors.accent} /> : null}
+      </View>
     </Pressable>
   );
 }

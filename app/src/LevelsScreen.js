@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
+import { Icon } from './Icon.js';
 import { Sheet, Stars, useTap } from './ui.js';
 
 const COLUMNS = 6;
@@ -151,9 +152,13 @@ function Tile({ level, color, colors, size, onPress }) {
       <Text style={{ fontWeight: '800', fontSize: 16, color: solved ? '#0b1430' : colors.ink }}>
         {level.level}
       </Text>
-      {locked ? <Text style={{ fontSize: 11 }}>🔒</Text> : null}
+      {locked ? <Icon name="lock" size={13} color={colors.muted} /> : null}
       {solved && level.stars > 0 ? (
-        <Text style={{ fontSize: 8, color: '#0b1430' }}>{'★'.repeat(level.stars)}</Text>
+        <View style={{ flexDirection: 'row' }}>
+          {Array.from({ length: level.stars }, (_, index) => (
+            <Icon key={index} name="star" size={9} color="#0b1430" />
+          ))}
+        </View>
       ) : null}
     </Pressable>
   );
