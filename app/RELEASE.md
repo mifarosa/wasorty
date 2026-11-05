@@ -37,3 +37,26 @@ ekranları, Google girişi ve gizlilik politikası hazır olunca:
 - Gizlilik politikası adresi (ör. `https://mifarosa.com/wasorty/privacy.html`)
 - App Privacy formu (hesap/Firebase, ileride reklam verileri)
 - Ekran görüntüleri, açıklama, yaş derecesi, inceleme notu
+
+## Build almadan güncelleme (EAS Update)
+
+Uygulama `expo-updates` ile açılışta yeni JavaScript'i arar. Ekran, oyun kuralı, metin, renk gibi
+JS değişiklikleri build hakkı harcamadan telefonlara gider:
+
+```bash
+cd app
+npx eas-cli update --branch production --message "Ne değişti"
+```
+
+Telefon yeni sürümü açılışta indirir, bir sonraki açılışta uygular. Hatalı çıkarsa eski güncellemeyi
+tekrar yayınlayarak geri alırsın (`npx eas-cli update:republish`).
+
+**Yeni build gerekir:** yeni native paket (reklam, giriş gibi), `app.json`'daki native ayarlar
+(izinler, simge, AdMob kimliği), Expo SDK yükseltmesi.
+
+**Kural:** böyle bir değişiklik yapıldığında `app/app.json` içindeki `runtimeVersion`'ı artır
+(`1.1.0` → `1.2.0`). Güncelleme yalnızca kendi `runtimeVersion`'ına sahip build'lere gider; eski
+build, kendinde olmayan native kodu isteyen bir JS'i almasın diye.
+
+Her build bir kanala bağlıdır (`eas.json` → `channel`); `production` profilinin kanalı
+`production`'dır, güncellemeyi `--branch production` ile ona gönderirsin.
