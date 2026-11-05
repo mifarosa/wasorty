@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
 import { Icon } from './Icon.js';
-import { Sheet, Stars, useTap } from './ui.js';
+import { Button, Sheet, Stars, useTap } from './ui.js';
 
 const COLUMNS = 6;
 const GAP = 8;
@@ -13,7 +13,14 @@ const SIDE = 16;
  * The level list: today's puzzle on top, then every level grouped by difficulty. It shows
  * what the game hands it (see LevelMenuModel in src/app/levelMenu.js) and reports the pick.
  */
-export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose }) {
+export function LevelsScreen({
+  model,
+  colors,
+  onPickLevel,
+  onPickDaily,
+  onLeaderboard = null,
+  onClose
+}) {
   const tap = useTap();
   const { width } = useWindowDimensions();
   const size = Math.floor((width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
@@ -31,6 +38,9 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
             onPickDaily();
           }}
         />
+        {onLeaderboard ? (
+          <Button label={words.leaderboard} onPress={onLeaderboard} colors={colors} />
+        ) : null}
         {model.chapters.map((chapter) => (
           <View
             key={chapter.id}

@@ -5,8 +5,9 @@
  * @typedef {object} Backend
  * @property {(listener: (user: User | null) => void) => Promise<() => void>} watchAuth reports
  *   the signed-in user now and whenever it changes; returns a function that stops listening
- * @property {() => Promise<void>} signIn opens Google's sign-in and, once the player picks an
- *   account, reports the new user through `watchAuth`'s listener; rejects with `{ code }`
+ * @property {(provider?: string) => Promise<void>} signIn opens the sign-in of a provider
+ *   ('google', or 'apple' in the app) and, once the player picks an account, reports the new
+ *   user through `watchAuth`'s listener; rejects with `{ code }`
  * @property {() => boolean} [hasPendingSignIn] true when the page left for Google's sign-in and
  *   has to pick the answer up
  * @property {() => Promise<void>} signOut
@@ -71,14 +72,22 @@ export class Account {
     await this.#watch();
   }
 
-  /** Signs in with Google. The result arrives as the state of the account. */
-  async signIn() {
+  /**
+   * Signs in with Google (or the provider asked for). The result arrives as the state of the
+   * account.
+   * @param {string} [provider]
+   */
+  async signIn(provider) {
     this.#set({ status: 'signingIn', error: null });
     try {
       await this.#watch();
-      await this.#backend.signIn();
+      await this.#backend.signIn(provider);
     } catch (error) {
-      const closed = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+      const closed = [
+        'auth/popup-closed-by-user',
+        'auth/cancelled-popup-request',
+        'sign-in-cancelled'
+      ];
       this.#set({
         status: this.#state.user ? this.#state.status : 'signedOut',
         error: closed.includes(error?.code) ? null : (error?.code ?? 'unknown')
