@@ -13,13 +13,14 @@ import { confettiColors } from '../src/scene/palette.js';
 import { LevelsScreen } from './src/LevelsScreen.js';
 import { NativeBoard } from './src/NativeBoard.js';
 import { NativeConfetti } from './src/NativeConfetti.js';
+import { Icon, useIconFonts } from './src/Icon.js';
 import { OfferDialog } from './src/OfferDialog.js';
 import { NativeHud } from './src/NativeHud.js';
 import { NativeMenu, NativeRules } from './src/NativeDialogs.js';
 import { RulesScreen } from './src/RulesScreen.js';
 import { SettingsScreen } from './src/SettingsScreen.js';
 import { Splash } from './src/Splash.js';
-import { TapContext } from './src/ui.js';
+import { Gloss, TapContext, glow } from './src/ui.js';
 import { WinCard } from './src/WinCard.js';
 import { startAds, watchRewardedAd } from './src/ads.js';
 import { words } from './src/appTexts.js';
@@ -58,6 +59,9 @@ export default function App() {
   useEffect(() => hud.subscribe(setState), [hud]);
   useEffect(() => menu.subscribe(setMenuModel), [menu]);
   useEffect(() => rules.subscribe(setRulesModel), [rules]);
+
+  // The icons draw once their font is there; the splash covers that moment.
+  useIconFonts();
 
   const scheme = useColorScheme();
   const colors = colorsOf(settings.theme, scheme);
@@ -168,7 +172,7 @@ export default function App() {
                 game()?.showInfo();
               }}
             >
-              <Text style={{ color: colors.accent, fontSize: 22, fontWeight: '900' }}>i</Text>
+              <Icon name="information-variant" size={26} color={colors.accent} />
             </HeaderButton>
             <HeaderButton
               filled
@@ -179,7 +183,7 @@ export default function App() {
                 setSettingsOpen(true);
               }}
             >
-              <SlidersIcon color={colors.accentInk} />
+              <Icon name="tune-variant" size={24} color={colors.accentInk} />
             </HeaderButton>
           </View>
 
@@ -187,7 +191,7 @@ export default function App() {
 
           <View style={styles.toolbar}>
             <ToolButton
-              icon="↩️"
+              icon="undo-variant"
               color="#38bdf8"
               label={words.undo}
               count={view?.undoCount}
@@ -196,7 +200,7 @@ export default function App() {
               onPress={() => game()?.undo()}
             />
             <ToolButton
-              icon="💡"
+              icon="lightbulb-on"
               color="#fbbf24"
               label={words.hint}
               count={view?.hintCount}
@@ -204,7 +208,7 @@ export default function App() {
               onPress={() => game()?.showHint()}
             />
             <ToolButton
-              icon="🔄"
+              icon="restart"
               color="#fb7185"
               label={words.restart}
               styles={styles}
@@ -214,7 +218,7 @@ export default function App() {
               }}
             />
             <ToolButton
-              icon="🧪"
+              icon="test-tube"
               color="#a78bfa"
               label={view?.levelsLabel ?? words.levels}
               styles={styles}
@@ -313,64 +317,41 @@ function HeaderButton({ a11y, colors, filled = false, onPress, children }) {
           justifyContent: 'center',
           borderWidth: 2,
           borderColor: colors.accent,
-          backgroundColor: filled ? colors.accent : colors.accent + '22'
+          backgroundColor: filled ? colors.accent : colors.panel
         },
-        pressed && { transform: [{ scale: 0.92 }] }
+        glow(colors.accent, 0.8),
+        pressed && { transform: [{ scale: 0.92 }], ...glow(colors.accent, 0.3) }
       ]}
     >
+      {filled ? <Gloss radius={14} /> : null}
       {children}
     </Pressable>
   );
 }
 
-/** Three sliders: the settings, drawn with plain views so it takes the theme's colors. */
-function SlidersIcon({ color }) {
-  return (
-    <View style={{ width: 20, height: 18, justifyContent: 'space-between' }}>
-      {[0.7, 0.2, 0.5].map((place, index) => (
-        <View key={index} style={{ height: 4 }}>
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 1,
-              height: 2,
-              borderRadius: 1,
-              backgroundColor: color
-            }}
-          />
-          <View
-            style={{
-              position: 'absolute',
-              left: place * 14,
-              top: -1,
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: color
-            }}
-          />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** A chunky button in its own color that sinks when pressed. */
-function ToolButton({ icon, color, label, count, disabled = false, styles, onPress }) {
+/**
+ * A chunky button in its own color: tinted body, a stripe of light on top, a glow under it,
+ * and it sinks into its bottom edge when pressed.
+ */
+function ToolButton({ icon, color, label, count, disabled = false, styles, colors, onPress }) {
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.tool,
-        { backgroundColor: color + '2e', borderColor: color },
+        { backgroundColor: colors.panel, borderColor: color },
+        glow(color),
         pressed && styles.toolPressed,
         disabled && styles.toolDisabled
       ]}
     >
-      <Text style={styles.toolIcon}>{icon}</Text>
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: color + '33', borderRadius: 15 }]}
+      />
+      <Gloss radius={14} />
+      <Icon name={icon} size={26} color={color} />
       <Text style={styles.toolText} numberOfLines={1}>
         {label}
       </Text>
@@ -411,10 +392,16 @@ function makeStyles(colors) {
       alignItems: 'center',
       gap: 2
     },
-    // Pressed, the button sinks into its bottom edge.
-    toolPressed: { borderBottomWidth: 2, transform: [{ translateY: 3 }] },
+    // Pressed, the button sinks into its bottom edge and its glow shrinks.
+    toolPressed: {
+      borderBottomWidth: 2,
+      transform: [{ translateY: 3 }],
+      shadowOpacity: 0.15,
+      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1
+    },
     toolDisabled: { opacity: 0.4 },
-    toolIcon: { fontSize: 24 },
     toolText: { color: colors.ink, fontWeight: '800', fontSize: 12 },
     badge: {
       position: 'absolute',
