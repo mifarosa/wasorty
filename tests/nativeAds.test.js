@@ -49,6 +49,17 @@ describe('rewarded ads', () => {
     expect(await watchRewardedAd()).toBe('rewarded');
   });
 
+  it('is simply without ads in a build that lacks the SDK', async () => {
+    vi.resetModules();
+    vi.doMock('react-native-google-mobile-ads', () => {
+      throw new Error("'RNGoogleMobileAdsModule' could not be found");
+    });
+    const { startAds, watchRewardedAd } = await import('../app/src/ads.js');
+    expect(() => startAds()).not.toThrow();
+    expect(await watchRewardedAd()).toBe('unavailable');
+    vi.doUnmock('react-native-google-mobile-ads');
+  });
+
   it('starts the ads without a fuss', async () => {
     const { startAds } = await freshAds();
     expect(() => startAds()).not.toThrow();
