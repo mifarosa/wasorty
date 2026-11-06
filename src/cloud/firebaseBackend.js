@@ -1,5 +1,3 @@
-import { loadFirebase } from './firebase.js';
-
 const REDIRECT_KEY = 'suloop:signin-redirect';
 
 function browserStorage() {
@@ -14,9 +12,10 @@ function browserStorage() {
  * What the game keeps in Firebase: sign-in with Google, the public profile and username of a
  * player, and their progress. The data model and who may touch what are in firestore.rules.
  *
- * @param {{ load?: typeof loadFirebase }} [options]
+ * @param {{ load: () => Promise<object>, storage?: Storage | null }} options load gives the
+ *   Firebase pieces: { auth, authApi, db, store } (see firebase.js for the website's)
  */
-export function createFirebaseBackend({ load = loadFirebase, storage = browserStorage() } = {}) {
+export function createFirebaseBackend({ load, storage = browserStorage() }) {
   return {
     /** Whether the page left for Google's sign-in and has to pick the answer up. */
     hasPendingSignIn: () => storage?.getItem(REDIRECT_KEY) === '1',
@@ -90,14 +89,20 @@ export function createFirebaseBackend({ load = loadFirebase, storage = browserSt
       });
     },
 
-    async deleteAccount(uid) {
-      const { auth, authApi, db, store } = await load();
+    /** Removes what is kept for the account: the progress, the profile and the username. */
+    async deleteData(uid) {
+      const { db, store } = await load();
       const profile = await this.readProfile(uid);
       const batch = store.writeBatch(db);
       batch.delete(store.doc(db, 'progress', uid));
       batch.delete(store.doc(db, 'profiles', uid));
       if (profile) batch.delete(store.doc(db, 'usernames', profile.username.toLowerCase()));
       await batch.commit();
+    },
+
+    async deleteAccount(uid) {
+      const { auth, authApi } = await load();
+      await this.deleteData(uid);
       // Deleting an account needs a recent sign-in; the caller shows the error.
       await authApi.deleteUser(auth.currentUser);
     }

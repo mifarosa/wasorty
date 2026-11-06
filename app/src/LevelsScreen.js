@@ -3,27 +3,41 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
 import { Icon } from './Icon.js';
-import { Sheet, Stars, useTap } from './ui.js';
+import { Button, Sheet, Stars, useTap } from './ui.js';
 
 const COLUMNS = 6;
-const GAP = 8;
 const SIDE = 16;
+/** How full a solved level's tube is, by the stars it earned (0 to 3). */
+const FILL_BY_STARS = [0.2, 0.38, 0.68, 1];
 
 /**
- * The level list: today's puzzle on top, then every level grouped by difficulty. It shows
- * what the game hands it (see LevelMenuModel in src/app/levelMenu.js) and reports the pick.
+ * The level list. It speaks the game's own language instead of a list of boxes: every level is
+ * a test tube on a shelf, every chapter a rack in the color of its liquid. A solved level is
+ * filled with that liquid, as high as the stars it earned, and sealed with a cap when it has all
+ * three, like the tubes of the board; an open one is empty; the one being played is lifted;
+ * a locked one is drawn with a dashed line and shut.
+ *
+ * It shows what the game hands it (see LevelMenuModel in src/app/levelMenu.js) and reports the
+ * pick.
  */
-export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose }) {
+export function LevelsScreen({
+  model,
+  colors,
+  onPickLevel,
+  onPickDaily,
+  onLeaderboard = null,
+  onClose
+}) {
   const tap = useTap();
   const { width } = useWindowDimensions();
-  const size = Math.floor((width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
+  const cell = Math.floor((width - SIDE * 2) / COLUMNS);
   const scroll = useRef(null);
   const scrolled = useRef(false);
 
   return (
     <Sheet title={words.levels} colors={colors} onClose={onClose}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 18 }}>
-        <DailyCard
+      <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 22 }}>
+        <DailyTicket
           daily={model.daily}
           colors={colors}
           onPress={() => {
@@ -31,6 +45,9 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
             onPickDaily();
           }}
         />
+        {onLeaderboard ? (
+          <Button label={words.leaderboard} onPress={onLeaderboard} colors={colors} />
+        ) : null}
         {model.chapters.map((chapter) => (
           <View
             key={chapter.id}
@@ -41,10 +58,10 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
               scroll.current?.scrollTo({ y: Math.max(0, event.nativeEvent.layout.y - 12) });
             }}
           >
-            <Chapter
+            <Rack
               chapter={chapter}
               colors={colors}
-              size={size}
+              cell={cell}
               onPickLevel={(level) => {
                 tap();
                 onPickLevel(level);
@@ -57,130 +74,184 @@ export function LevelsScreen({ model, colors, onPickLevel, onPickDaily, onClose 
   );
 }
 
-function DailyCard({ daily, colors, onPress }) {
+/** Today's puzzle as a ticket: a dashed outline, plain words, no fill. */
+function DailyTicket({ daily, colors, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       style={[
-        styles.daily,
-        { backgroundColor: colors.panel, borderColor: daily.playing ? colors.accent : colors.line }
+        styles.ticket,
+        {
+          borderColor: daily.playing ? colors.accent : colors.line,
+          borderStyle: daily.playing ? 'solid' : 'dashed'
+        }
       ]}
     >
-      <View style={styles.dailyText}>
-        <Text style={[styles.dailyTitle, { color: colors.ink }]}>{daily.title}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[styles.ticketTitle, { color: colors.ink }]}>{daily.title}</Text>
         <Text style={{ color: colors.muted }}>{daily.date}</Text>
         {daily.result ? (
-          <Text style={{ color: colors.ink }}>
-            {daily.result.text} <Stars count={daily.result.stars} colors={colors} size={14} />
-          </Text>
+          <View style={styles.ticketLine}>
+            <Text style={{ color: colors.ink }}>{daily.result.text}</Text>
+            <Stars count={daily.result.stars} colors={colors} size={13} />
+          </View>
         ) : null}
         {daily.streak ? <Text style={{ color: colors.muted }}>{daily.streak}</Text> : null}
       </View>
-      <Text style={{ color: colors.accent, fontWeight: '800' }}>{daily.action}</Text>
+      <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 16 }}>{daily.action}</Text>
     </Pressable>
   );
 }
 
-function Chapter({ chapter, colors, size, onPickLevel }) {
+/** A chapter: its name and progress, then its levels as tubes, six to a shelf. */
+function Rack({ chapter, colors, cell, onPickLevel }) {
   const color = CHAPTER_COLORS[chapter.id] ?? colors.accent;
+  const rows = [];
+  for (let i = 0; i < chapter.levels.length; i += COLUMNS) {
+    rows.push(chapter.levels.slice(i, i + COLUMNS));
+  }
   return (
     <View style={{ gap: 6 }}>
-      <View style={styles.chapterHeader}>
-        <View style={styles.chapterTitle}>
-          <Text style={[styles.chapterName, { color: colors.ink }]}>{chapter.name}</Text>
-          <View style={styles.bars}>
-            {[1, 2, 3, 4].map((bar) => (
-              <View
-                key={bar}
-                style={[
-                  styles.bar,
-                  {
-                    height: 5 + bar * 3,
-                    backgroundColor: bar <= chapter.difficulty ? color : colors.line
-                  }
-                ]}
-              />
-            ))}
-          </View>
+      <View style={styles.header}>
+        <View style={[styles.drop, { backgroundColor: color }]} />
+        <Text style={[styles.name, { color: colors.ink }]} numberOfLines={1}>
+          {chapter.name}
+        </Text>
+        <View style={styles.bars}>
+          {[1, 2, 3, 4].map((bar) => (
+            <View
+              key={bar}
+              style={{
+                width: 4,
+                height: 5 + bar * 3,
+                borderRadius: 1,
+                backgroundColor: bar <= chapter.difficulty ? color : colors.line
+              }}
+            />
+          ))}
         </View>
-        <Text style={{ color: colors.muted }}>{chapter.progress}</Text>
+        <Text style={[styles.progress, { color: colors.muted }]}>{chapter.progress}</Text>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 13 }}>{chapter.detail}</Text>
-      <View style={styles.grid}>
-        {chapter.levels.map((level) => (
-          <Tile
-            key={level.level}
-            level={level}
-            color={color}
-            colors={colors}
-            size={size}
-            onPress={() => onPickLevel(level.level)}
-          />
-        ))}
-      </View>
+      <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 6 }}>{chapter.detail}</Text>
+      {rows.map((row, index) => (
+        <View key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
+          {row.map((level) => (
+            <Tube
+              key={level.level}
+              level={level}
+              color={color}
+              colors={colors}
+              cell={cell}
+              onPress={() => onPickLevel(level.level)}
+            />
+          ))}
+        </View>
+      ))}
     </View>
   );
 }
 
-function Tile({ level, color, colors, size, onPress }) {
+/** One level: a tube standing on its piece of the shelf, with its number underneath. */
+function Tube({ level, color, colors, cell, onPress }) {
   const locked = level.state === 'locked';
   const solved = level.state === 'solved';
+  const playing = level.playing;
+  const width = Math.round(cell * 0.56);
+  const height = Math.round(cell * 1.0);
+  const fill = solved ? (FILL_BY_STARS[level.stars] ?? FILL_BY_STARS[0]) : 0;
+  const sealed = solved && level.stars === 3;
+  const glass = locked ? colors.line : solved ? `${colors.glass}aa` : color;
+
   return (
     <Pressable
       disabled={locked}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={level.label}
-      style={[
-        styles.tile,
-        {
-          width: size,
-          height: size,
-          borderColor: level.playing
-            ? colors.ink
-            : solved
-              ? color
-              : level.state === 'open'
-                ? color
-                : colors.line,
-          backgroundColor: solved ? color : colors.panel,
-          opacity: locked ? 0.45 : 1
-        }
-      ]}
+      style={{ width: cell, alignItems: 'center' }}
     >
-      <Text style={{ fontWeight: '800', fontSize: 16, color: solved ? '#0b1430' : colors.ink }}>
+      <View style={{ height: height + 12, justifyContent: 'flex-end', alignItems: 'center' }}>
+        {/* The lifted tube of the level being played, as on the board. */}
+        <View style={{ alignItems: 'center', transform: [{ translateY: playing ? -7 : 0 }] }}>
+          {sealed ? (
+            <View
+              style={{
+                width: width + 6,
+                height: 5,
+                borderRadius: 2.5,
+                marginBottom: -1,
+                backgroundColor: color
+              }}
+            />
+          ) : null}
+          <View
+            style={{
+              width,
+              height,
+              borderWidth: 2,
+              borderStyle: locked ? 'dashed' : 'solid',
+              borderColor: glass,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderBottomLeftRadius: width / 2,
+              borderBottomRightRadius: width / 2,
+              overflow: 'hidden',
+              justifyContent: 'flex-end',
+              alignItems: 'center'
+            }}
+          >
+            {fill > 0 ? (
+              <View style={{ width: '100%', height: `${fill * 100}%`, backgroundColor: color }} />
+            ) : null}
+            {locked ? (
+              <View style={styles.lock}>
+                <Icon name="lock" size={14} color={colors.muted} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+      <View style={[styles.shelf, { backgroundColor: colors.line }]} />
+      <Text
+        style={{
+          marginTop: 4,
+          fontSize: 12,
+          fontWeight: playing ? '800' : '600',
+          color: playing ? colors.ink : locked ? colors.muted : colors.ink,
+          opacity: locked ? 0.6 : 1
+        }}
+      >
         {level.level}
       </Text>
-      {locked ? <Icon name="lock" size={13} color={colors.muted} /> : null}
-      {solved && level.stars > 0 ? (
-        <View style={{ flexDirection: 'row' }}>
-          {Array.from({ length: level.stars }, (_, index) => (
-            <Icon key={index} name="star" size={9} color="#0b1430" />
-          ))}
-        </View>
-      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  daily: {
+  ticket: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 2,
     padding: 16,
     gap: 12
   },
-  dailyText: { flex: 1, gap: 2 },
-  dailyTitle: { fontSize: 18, fontWeight: '800' },
-  chapterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  chapterTitle: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  chapterName: { fontSize: 18, fontWeight: '800' },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  bar: { width: 4, borderRadius: 1 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginTop: 4 },
-  tile: { borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' }
+  ticketTitle: { fontSize: 18, fontWeight: '800' },
+  ticketLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  drop: { width: 12, height: 12, borderRadius: 6, marginBottom: 5 },
+  name: { fontSize: 20, fontWeight: '800', flexShrink: 1 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginBottom: 3 },
+  progress: { marginLeft: 'auto', fontSize: 14, fontWeight: '700' },
+  shelf: { height: 4, alignSelf: 'stretch' },
+  lock: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
 });

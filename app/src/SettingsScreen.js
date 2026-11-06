@@ -9,6 +9,7 @@ import {
   useColorScheme
 } from 'react-native';
 import { LANGUAGES } from '../../src/app/i18n.js';
+import { AccountSection } from './AccountSection.js';
 import { words } from './appTexts.js';
 import { SITE_NAME, SITE_URL } from './brand.js';
 import { THEME_IDS, colorsOf, paletteOf } from './theme.js';
@@ -19,11 +20,25 @@ import { Sheet, useTap } from './ui.js';
  * The settings: the theme, the language, vibration and symbols on the colors, and who makes
  * the game. A change applies at once.
  */
-export function SettingsScreen({ settings, colors, onChange, onClose }) {
+export function SettingsScreen({ settings, colors, onChange, onClose, account }) {
   const scheme = useColorScheme();
   return (
     <Sheet title={words.settings} colors={colors} onClose={onClose}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 22 }}>
+        {account ? (
+          <Group title={words.accountTitle} colors={colors}>
+            <AccountSection
+              account={account.state}
+              sync={account.sync}
+              message={account.message}
+              available={account.available}
+              colors={colors}
+              dark={account.dark}
+              actions={account.actions}
+            />
+          </Group>
+        ) : null}
+
         <Group title={words.theme} colors={colors}>
           {THEME_IDS.map((id) => (
             <ThemeChoice

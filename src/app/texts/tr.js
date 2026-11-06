@@ -223,6 +223,10 @@ export const tr = {
       'auth/network-request-failed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
       'auth/unauthorized-domain': 'Bu adres için giriş açılmamış.',
       'invalid-credential': 'Giriş doğrulanamadı, tekrar dene.',
+      'auth/invalid-credential': 'Giriş doğrulanamadı, tekrar dene.',
+      'auth/operation-not-allowed': 'Bu giriş yöntemi henüz açılmamış.',
+      'provider-unavailable': 'Bu giriş yöntemi bu sürümde yok.',
+      ERR_REQUEST_UNKNOWN: 'Apple giriş yapamadı. Bu uygulama için “Apple ile giriş” açık mı?',
       network: 'Sunucuya ulaşılamadı. İnternetini kontrol et.',
       'delete-failed': 'Hesap silinemedi, tekrar dene.'
     })[code] ?? 'Bir şeyler ters gitti, tekrar dene.',

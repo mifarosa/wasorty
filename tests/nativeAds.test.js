@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 async function freshAds(behaviour = {}) {
   vi.resetModules();
   const { control } = await import('react-native-google-mobile-ads');
-  Object.assign(control, { load: 'load', show: 'reward', created: 0 }, behaviour);
+  Object.assign(control, { load: 'load', show: 'reward', created: 0, missing: false }, behaviour);
   return { control, ...(await import('../app/src/ads.js')) };
 }
 
@@ -47,6 +47,12 @@ describe('rewarded ads', () => {
     const asked = control.created;
     expect(asked).toBeGreaterThanOrEqual(2);
     expect(await watchRewardedAd()).toBe('rewarded');
+  });
+
+  it('is simply without ads in a build that lacks the SDK', async () => {
+    const { startAds, watchRewardedAd } = await freshAds({ missing: true });
+    expect(() => startAds()).not.toThrow();
+    expect(await watchRewardedAd()).toBe('unavailable');
   });
 
   it('starts the ads without a fuss', async () => {
