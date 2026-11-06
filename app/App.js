@@ -282,6 +282,7 @@ export default function App() {
 
           <View style={styles.toolbar}>
             <ToolButton
+              colors={colors}
               icon="undo-variant"
               color="#38bdf8"
               label={words.undo}
@@ -291,6 +292,7 @@ export default function App() {
               onPress={() => game()?.undo()}
             />
             <ToolButton
+              colors={colors}
               icon="lightbulb-on"
               color="#fbbf24"
               label={words.hint}
@@ -299,6 +301,7 @@ export default function App() {
               onPress={() => game()?.showHint()}
             />
             <ToolButton
+              colors={colors}
               icon="restart"
               color="#fb7185"
               label={words.restart}
@@ -309,6 +312,7 @@ export default function App() {
               }}
             />
             <ToolButton
+              colors={colors}
               icon="test-tube"
               color="#a78bfa"
               label={view?.levelsLabel ?? words.levels}
