@@ -39,9 +39,9 @@ export function LevelsScreen({
 }) {
   const tap = useTap();
   const { width } = useWindowDimensions();
-  // The tiles sit inside a chapter's card, which has a margin and a left edge of its own.
+  // The tiles sit inside a chapter's card, which has a padding and a border of its own.
   const size = Math.floor(
-    (width - SIDE * 2 - CARD_PADDING * 2 - 8 - GAP * (COLUMNS - 1)) / COLUMNS
+    (width - SIDE * 2 - CARD_PADDING * 2 - 4 - GAP * (COLUMNS - 1)) / COLUMNS
   );
   const scroll = useRef(null);
   const scrolled = useRef(false);
@@ -133,18 +133,14 @@ function DailyCard({ daily, colors, onPress }) {
   );
 }
 
-/** A chapter: a card tinted in its color, with its icon, its progress and its levels. */
+/** A chapter: a card tinted in its color, with its icon, its progress and its levels. No edge
+ * of a different color along one side: that stripe is what every generated interface has. */
 function Chapter({ chapter, colors, size, onPickLevel }) {
   const color = CHAPTER_COLORS[chapter.id] ?? colors.accent;
   const solved = chapter.levels.filter((level) => level.state === 'solved').length;
   const total = chapter.levels.length;
   return (
-    <View
-      style={[
-        styles.chapter,
-        { backgroundColor: colors.panel, borderColor: `${color}66`, borderLeftColor: color }
-      ]}
-    >
+    <View style={[styles.chapter, { backgroundColor: colors.panel, borderColor: `${color}55` }]}>
       <View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: `${color}14`, borderRadius: 16 }]}
@@ -274,7 +270,6 @@ const styles = StyleSheet.create({
   chapter: {
     borderRadius: 16,
     borderWidth: 1,
-    borderLeftWidth: 6,
     padding: CARD_PADDING,
     gap: 8
   },
