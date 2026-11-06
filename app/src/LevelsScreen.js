@@ -3,31 +3,22 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
 import { Icon } from './Icon.js';
-import { Button, Gloss, Sheet, Stars, glow, useTap } from './ui.js';
+import { Button, Sheet, Stars, useTap } from './ui.js';
 
 const COLUMNS = 6;
-const GAP = 8;
 const SIDE = 16;
-/** Text and icons on a tile or a badge filled with a chapter's color. */
-const ON_COLOR = '#0b1430';
-
-/** An icon for each chapter, from the Material Community set. */
-const CHAPTER_ICONS = {
-  easy: 'sprout',
-  oneWay: 'arrow-up-bold',
-  tall: 'arrow-expand-vertical',
-  hidden: 'help-circle-outline',
-  cracked: 'hammer',
-  locked: 'lock-outline',
-  half: 'circle-half-full',
-  oil: 'water',
-  master: 'crown'
-};
+/** How full a solved level's tube is, by the stars it earned (0 to 3). */
+const FILL_BY_STARS = [0.2, 0.38, 0.68, 1];
 
 /**
- * The level list: today's puzzle on top, then every level grouped by difficulty, each chapter
- * in its own color. It shows what the game hands it (see LevelMenuModel in
- * src/app/levelMenu.js) and reports the pick.
+ * The level list. It speaks the game's own language instead of a list of boxes: every level is
+ * a test tube on a shelf, every chapter a rack in the color of its liquid. A solved level is
+ * filled with that liquid, as high as the stars it earned, and sealed with a cap when it has all
+ * three, like the tubes of the board; an open one is empty; the one being played is lifted;
+ * a locked one is drawn with a dashed line and shut.
+ *
+ * It shows what the game hands it (see LevelMenuModel in src/app/levelMenu.js) and reports the
+ * pick.
  */
 export function LevelsScreen({
   model,
@@ -39,17 +30,14 @@ export function LevelsScreen({
 }) {
   const tap = useTap();
   const { width } = useWindowDimensions();
-  // The tiles sit inside a chapter's card, which has a padding and a border of its own.
-  const size = Math.floor(
-    (width - SIDE * 2 - CARD_PADDING * 2 - 4 - GAP * (COLUMNS - 1)) / COLUMNS
-  );
+  const cell = Math.floor((width - SIDE * 2) / COLUMNS);
   const scroll = useRef(null);
   const scrolled = useRef(false);
 
   return (
     <Sheet title={words.levels} colors={colors} onClose={onClose}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 16 }}>
-        <DailyCard
+      <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 22 }}>
+        <DailyTicket
           daily={model.daily}
           colors={colors}
           onPress={() => {
@@ -70,10 +58,10 @@ export function LevelsScreen({
               scroll.current?.scrollTo({ y: Math.max(0, event.nativeEvent.layout.y - 12) });
             }}
           >
-            <Chapter
+            <Rack
               chapter={chapter}
               colors={colors}
-              size={size}
+              cell={cell}
               onPickLevel={(level) => {
                 tap();
                 onPickLevel(level);
@@ -86,200 +74,184 @@ export function LevelsScreen({
   );
 }
 
-const CARD_PADDING = 14;
-
-/** Today's puzzle: the one card filled with the accent color, with a glow of its own. */
-function DailyCard({ daily, colors, onPress }) {
-  const ink = colors.accentInk;
-  const onAccent = { ...colors, star: ink, starOff: `${ink}55` };
+/** Today's puzzle as a ticket: a dashed outline, plain words, no fill. */
+function DailyTicket({ daily, colors, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [
-        styles.daily,
+      style={[
+        styles.ticket,
         {
-          backgroundColor: colors.accent,
-          borderColor: daily.playing ? colors.ink : colors.accent
-        },
-        glow(colors.accent),
-        pressed && { transform: [{ scale: 0.98 }] }
+          borderColor: daily.playing ? colors.accent : colors.line,
+          borderStyle: daily.playing ? 'solid' : 'dashed'
+        }
       ]}
     >
-      <Gloss radius={16} />
-      <View style={[styles.badge, { backgroundColor: ink }]}>
-        <Icon name="calendar-today" size={26} color={colors.accent} />
-      </View>
-      <View style={styles.dailyText}>
-        <Text style={[styles.dailyTitle, { color: ink }]}>{daily.title}</Text>
-        <Text style={{ color: ink, opacity: 0.8 }}>{daily.date}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[styles.ticketTitle, { color: colors.ink }]}>{daily.title}</Text>
+        <Text style={{ color: colors.muted }}>{daily.date}</Text>
         {daily.result ? (
-          <View style={styles.dailyLine}>
-            <Text style={{ color: ink, fontWeight: '700' }}>{daily.result.text}</Text>
-            <Stars count={daily.result.stars} colors={onAccent} size={14} />
+          <View style={styles.ticketLine}>
+            <Text style={{ color: colors.ink }}>{daily.result.text}</Text>
+            <Stars count={daily.result.stars} colors={colors} size={13} />
           </View>
         ) : null}
-        {daily.streak ? (
-          <View style={styles.dailyLine}>
-            <Icon name="fire" size={16} color={ink} />
-            <Text style={{ color: ink, fontWeight: '700' }}>{daily.streak}</Text>
-          </View>
-        ) : null}
+        {daily.streak ? <Text style={{ color: colors.muted }}>{daily.streak}</Text> : null}
       </View>
-      <View style={[styles.pill, { backgroundColor: ink }]}>
-        <Text style={{ color: colors.accent, fontWeight: '800' }}>{daily.action}</Text>
-      </View>
+      <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 16 }}>{daily.action}</Text>
     </Pressable>
   );
 }
 
-/** A chapter: a card tinted in its color, with its icon, its progress and its levels. No edge
- * of a different color along one side: that stripe is what every generated interface has. */
-function Chapter({ chapter, colors, size, onPickLevel }) {
+/** A chapter: its name and progress, then its levels as tubes, six to a shelf. */
+function Rack({ chapter, colors, cell, onPickLevel }) {
   const color = CHAPTER_COLORS[chapter.id] ?? colors.accent;
-  const solved = chapter.levels.filter((level) => level.state === 'solved').length;
-  const total = chapter.levels.length;
+  const rows = [];
+  for (let i = 0; i < chapter.levels.length; i += COLUMNS) {
+    rows.push(chapter.levels.slice(i, i + COLUMNS));
+  }
   return (
-    <View style={[styles.chapter, { backgroundColor: colors.panel, borderColor: `${color}55` }]}>
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: `${color}14`, borderRadius: 16 }]}
-      />
-      <View style={styles.chapterHeader}>
-        <View style={[styles.badge, { backgroundColor: color }, glow(color, 0.6)]}>
-          <Icon name={CHAPTER_ICONS[chapter.id] ?? 'star'} size={24} color={ON_COLOR} />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={styles.chapterTitle}>
-            <Text style={[styles.chapterName, { color: colors.ink }]} numberOfLines={1}>
-              {chapter.name}
-            </Text>
-            <View style={styles.bars}>
-              {[1, 2, 3, 4].map((bar) => (
-                <View
-                  key={bar}
-                  style={[
-                    styles.bar,
-                    {
-                      height: 5 + bar * 3,
-                      backgroundColor: bar <= chapter.difficulty ? color : colors.line
-                    }
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-          <View style={styles.track}>
+    <View style={{ gap: 6 }}>
+      <View style={styles.header}>
+        <View style={[styles.drop, { backgroundColor: color }]} />
+        <Text style={[styles.name, { color: colors.ink }]} numberOfLines={1}>
+          {chapter.name}
+        </Text>
+        <View style={styles.bars}>
+          {[1, 2, 3, 4].map((bar) => (
             <View
-              style={[
-                styles.fill,
-                { backgroundColor: color, width: `${total === 0 ? 0 : (solved / total) * 100}%` }
-              ]}
+              key={bar}
+              style={{
+                width: 4,
+                height: 5 + bar * 3,
+                borderRadius: 1,
+                backgroundColor: bar <= chapter.difficulty ? color : colors.line
+              }}
             />
-          </View>
+          ))}
         </View>
-        <Text style={{ color, fontWeight: '800' }}>{chapter.progress}</Text>
+        <Text style={[styles.progress, { color: colors.muted }]}>{chapter.progress}</Text>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 13 }}>{chapter.detail}</Text>
-      <View style={styles.grid}>
-        {chapter.levels.map((level) => (
-          <Tile
-            key={level.level}
-            level={level}
-            color={color}
-            colors={colors}
-            size={size}
-            onPress={() => onPickLevel(level.level)}
-          />
-        ))}
-      </View>
+      <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 6 }}>{chapter.detail}</Text>
+      {rows.map((row, index) => (
+        <View key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
+          {row.map((level) => (
+            <Tube
+              key={level.level}
+              level={level}
+              color={color}
+              colors={colors}
+              cell={cell}
+              onPress={() => onPickLevel(level.level)}
+            />
+          ))}
+        </View>
+      ))}
     </View>
   );
 }
 
-/**
- * A level: solved ones are filled with the chapter's color, open ones tinted and lit, the one
- * being played stands out with a glow, locked ones are grey and shut.
- */
-function Tile({ level, color, colors, size, onPress }) {
+/** One level: a tube standing on its piece of the shelf, with its number underneath. */
+function Tube({ level, color, colors, cell, onPress }) {
   const locked = level.state === 'locked';
   const solved = level.state === 'solved';
+  const playing = level.playing;
+  const width = Math.round(cell * 0.56);
+  const height = Math.round(cell * 1.0);
+  const fill = solved ? (FILL_BY_STARS[level.stars] ?? FILL_BY_STARS[0]) : 0;
+  const sealed = solved && level.stars === 3;
+  const glass = locked ? colors.line : solved ? `${colors.glass}aa` : color;
+
   return (
     <Pressable
       disabled={locked}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={level.label}
-      style={({ pressed }) => [
-        styles.tile,
-        {
-          width: size,
-          height: size,
-          backgroundColor: solved ? color : colors.panel,
-          borderColor: level.playing ? colors.ink : locked ? colors.line : color,
-          borderWidth: level.playing ? 3 : 2,
-          opacity: locked ? 0.5 : 1
-        },
-        !locked && glow(color, level.playing ? 1 : 0.4),
-        level.playing && { transform: [{ scale: 1.08 }], zIndex: 2 },
-        pressed && { transform: [{ scale: 0.94 }] }
-      ]}
+      style={{ width: cell, alignItems: 'center' }}
     >
-      {!solved && !locked ? (
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: `${color}33`, borderRadius: 9 }]}
-        />
-      ) : null}
-      {!locked ? <Gloss radius={8} /> : null}
-      <Text style={{ fontWeight: '800', fontSize: 16, color: solved ? ON_COLOR : colors.ink }}>
+      <View style={{ height: height + 12, justifyContent: 'flex-end', alignItems: 'center' }}>
+        {/* The lifted tube of the level being played, as on the board. */}
+        <View style={{ alignItems: 'center', transform: [{ translateY: playing ? -7 : 0 }] }}>
+          {sealed ? (
+            <View
+              style={{
+                width: width + 6,
+                height: 5,
+                borderRadius: 2.5,
+                marginBottom: -1,
+                backgroundColor: color
+              }}
+            />
+          ) : null}
+          <View
+            style={{
+              width,
+              height,
+              borderWidth: 2,
+              borderStyle: locked ? 'dashed' : 'solid',
+              borderColor: glass,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderBottomLeftRadius: width / 2,
+              borderBottomRightRadius: width / 2,
+              overflow: 'hidden',
+              justifyContent: 'flex-end',
+              alignItems: 'center'
+            }}
+          >
+            {fill > 0 ? (
+              <View style={{ width: '100%', height: `${fill * 100}%`, backgroundColor: color }} />
+            ) : null}
+            {locked ? (
+              <View style={styles.lock}>
+                <Icon name="lock" size={14} color={colors.muted} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+      <View style={[styles.shelf, { backgroundColor: colors.line }]} />
+      <Text
+        style={{
+          marginTop: 4,
+          fontSize: 12,
+          fontWeight: playing ? '800' : '600',
+          color: playing ? colors.ink : locked ? colors.muted : colors.ink,
+          opacity: locked ? 0.6 : 1
+        }}
+      >
         {level.level}
       </Text>
-      {locked ? <Icon name="lock" size={13} color={colors.muted} /> : null}
-      {solved && level.stars > 0 ? (
-        <View style={{ flexDirection: 'row' }}>
-          {Array.from({ length: level.stars }, (_, index) => (
-            <Icon key={index} name="star" size={9} color={ON_COLOR} />
-          ))}
-        </View>
-      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  daily: {
+  ticket: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 3,
+    borderRadius: 16,
+    borderWidth: 2,
     padding: 16,
     gap: 12
   },
-  dailyText: { flex: 1, gap: 2 },
-  dailyTitle: { fontSize: 18, fontWeight: '800' },
-  dailyLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pill: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
-  badge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  ticketTitle: { fontSize: 18, fontWeight: '800' },
+  ticketLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  drop: { width: 12, height: 12, borderRadius: 6, marginBottom: 5 },
+  name: { fontSize: 20, fontWeight: '800', flexShrink: 1 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginBottom: 3 },
+  progress: { marginLeft: 'auto', fontSize: 14, fontWeight: '700' },
+  shelf: { height: 4, alignSelf: 'stretch' },
+  lock: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  chapter: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: CARD_PADDING,
-    gap: 8
-  },
-  chapterHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  chapterTitle: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  chapterName: { fontSize: 18, fontWeight: '800', flexShrink: 1 },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  bar: { width: 4, borderRadius: 1 },
-  track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(127,127,127,0.25)' },
-  fill: { height: 6, borderRadius: 3 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginTop: 2 },
-  tile: { borderRadius: 11, alignItems: 'center', justifyContent: 'center' }
+  }
 });
