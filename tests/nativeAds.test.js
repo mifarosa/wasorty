@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 async function freshAds(behaviour = {}) {
   vi.resetModules();
   const { control } = await import('react-native-google-mobile-ads');
-  Object.assign(control, { load: 'load', show: 'reward', created: 0 }, behaviour);
+  Object.assign(control, { load: 'load', show: 'reward', created: 0, missing: false }, behaviour);
   return { control, ...(await import('../app/src/ads.js')) };
 }
 
@@ -50,14 +50,9 @@ describe('rewarded ads', () => {
   });
 
   it('is simply without ads in a build that lacks the SDK', async () => {
-    vi.resetModules();
-    vi.doMock('react-native-google-mobile-ads', () => {
-      throw new Error("'RNGoogleMobileAdsModule' could not be found");
-    });
-    const { startAds, watchRewardedAd } = await import('../app/src/ads.js');
+    const { startAds, watchRewardedAd } = await freshAds({ missing: true });
     expect(() => startAds()).not.toThrow();
     expect(await watchRewardedAd()).toBe('unavailable');
-    vi.doUnmock('react-native-google-mobile-ads');
   });
 
   it('starts the ads without a fuss', async () => {

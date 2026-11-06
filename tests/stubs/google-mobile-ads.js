@@ -5,7 +5,9 @@ export const control = {
   load: 'load',
   /** what showing does: 'reward' | 'close' | 'error' | 'reject' */
   show: 'reward',
-  created: 0
+  created: 0,
+  /** the build has no ads at all */
+  missing: false
 };
 
 export const AdEventType = { ERROR: 'error', CLOSED: 'closed' };
