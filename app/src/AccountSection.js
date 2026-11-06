@@ -26,7 +26,8 @@ export function AccountSection({ account, sync, message, available, colors, dark
   const [name, setName] = useState('');
   const signedIn = account.user !== null;
   const busy = account.status === 'signingIn';
-  const error = message ?? (account.error ? texts.accountError(account.error) : '');
+  const error =
+    message ?? (account.error ? `${texts.accountError(account.error)} (${account.error})` : '');
 
   const card = [styles.card, { backgroundColor: colors.panel, borderColor: colors.line }];
   return (

@@ -175,6 +175,27 @@ describe('the backend of the app', () => {
     await expect(backend.signIn('google')).rejects.toMatchObject({ code: 'provider-unavailable' });
   });
 
+  it('says in the console what failed, and passes the error on', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const apple = provider();
+    apple.getCredential.mockRejectedValueOnce(
+      Object.assign(new Error('Authorization failed'), { code: 'ERR_REQUEST_UNKNOWN' })
+    );
+    const backend = createNativeBackend({ load: fakeFirebase().load, providers: { apple } });
+    await expect(backend.signIn('apple')).rejects.toMatchObject({ code: 'ERR_REQUEST_UNKNOWN' });
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0])).toContain('ERR_REQUEST_UNKNOWN');
+
+    // A player who backs out is not a failure to report.
+    warn.mockClear();
+    apple.getCredential.mockRejectedValueOnce(
+      Object.assign(new Error('x'), { code: 'sign-in-cancelled' })
+    );
+    await expect(backend.signIn('apple')).rejects.toBeDefined();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('reports who is signed in, and never waits for a redirect', async () => {
     const backend = createNativeBackend({ load: fakeFirebase().load, providers: {} });
     const listener = vi.fn();

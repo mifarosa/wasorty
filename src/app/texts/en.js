@@ -223,6 +223,11 @@ export const en = {
       'auth/network-request-failed': 'Could not connect. Check your internet.',
       'auth/unauthorized-domain': 'Sign-in is not set up for this address.',
       'invalid-credential': 'The sign-in could not be checked, try again.',
+      'auth/invalid-credential': 'The sign-in could not be checked, try again.',
+      'auth/operation-not-allowed': 'This way of signing in is not turned on yet.',
+      'provider-unavailable': 'This way of signing in is not available in this version.',
+      ERR_REQUEST_UNKNOWN:
+        'Apple could not sign you in. Is “Sign in with Apple” turned on for this app?',
       network: 'Could not reach the server. Check your internet.',
       'delete-failed': 'The account could not be deleted, try again.'
     })[code] ?? 'Something went wrong, try again.',
