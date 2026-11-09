@@ -116,5 +116,6 @@ export const CHAPTER_COLORS = {
   locked: '#ef4444',
   half: '#fb7185',
   oil: '#f472b6',
-  master: '#a855f7'
+  master: '#a855f7',
+  giant: '#06b6d4'
 };

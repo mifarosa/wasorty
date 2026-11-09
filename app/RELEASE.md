@@ -60,3 +60,17 @@ build, kendinde olmayan native kodu isteyen bir JS'i almasın diye.
 
 Her build bir kanala bağlıdır (`eas.json` → `channel`); `production` profilinin kanalı
 `production`'dır, güncellemeyi `--branch production` ile ona gönderirsin.
+
+## Giriş (Apple ve Google)
+
+Hesap ve günlük liderlik tablosu Firebase'te (`suloop-8ee05`, sitedekiyle aynı proje); Google ile
+girince sitedeki hesapla aynı hesap olur.
+
+- **Apple:** hazır. Apple Developer'da `com.mifarosa.wasorty` için _Sign in with Apple_ açık olmalı
+  ve Firebase konsolunda _Authentication → Sign-in method → Apple_ etkin olmalı.
+- **Google:** iki değer girilene kadar düğme görünmez (`app/src/cloud/authConfig.js`):
+  `GOOGLE_WEB_CLIENT_ID` (Firebase → Google → Web client ID) ve `GOOGLE_IOS_CLIENT_ID`
+  (`GoogleService-Info.plist` → `CLIENT_ID`). Ayrıca `app.json` → `plugins` içine
+  `["@react-native-google-signin/google-signin", { "iosUrlScheme": "<REVERSED_CLIENT_ID>" }]`
+  eklenir; bu bir native değişikliktir, `runtimeVersion` artar.
+- Bağlantı yoksa oyun oynanır; hesap ve senkron hata gösterir, sonra yeniden dener.

@@ -113,6 +113,24 @@ export class GameSession {
     this.hintsTaken++;
   }
 
+  /**
+   * Puts one more empty tube at the end of the board, in the position, in every position the
+   * history can go back to and in the start a restart returns to, so undo and restart keep it.
+   * @returns {number} the index of the new tube
+   */
+  addTube() {
+    const withTube = ({ tubes, fills }) => ({
+      tubes: [...tubes.map((tube) => tube.slice()), []],
+      fills: [...fills, null]
+    });
+    const index = this.position.tubes.length;
+    this.position = withTube(this.position);
+    for (const move of this.history) move.before = withTube(move.before);
+    this.initialTubes = [...this.initialTubes, []];
+    this.hiddenCounts = [...this.hiddenCounts, 0];
+    return index;
+  }
+
   /** Whether there is a move to take back, whatever the undo limit says. */
   get hasMoves() {
     return this.history.length > 0 && !this.solved;

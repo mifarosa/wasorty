@@ -4,7 +4,24 @@
  */
 
 /** The symbols as text, in color order, e.g. for the editor's color chips. */
-export const SYMBOL_CHARS = ['●', '▲', '■', '◆', '★', '✚', '✖', '⬢', '◯', '▬', '❤', '☾'];
+export const SYMBOL_CHARS = [
+  '●',
+  '▲',
+  '■',
+  '◆',
+  '★',
+  '✚',
+  '✖',
+  '⬢',
+  '◯',
+  '▬',
+  '❤',
+  '☾',
+  '▼',
+  '⬟',
+  '»',
+  '⬮'
+];
 
 /**
  * Draws the symbol of `color`, centered at the origin, about `size` units across, in white
@@ -72,9 +89,34 @@ export function drawSymbol(ctx, color, size) {
       ctx.bezierCurveTo(-r * 1.3, r * 0.1, -r * 0.8, -r * 0.9, 0, -r * 0.3);
       ctx.bezierCurveTo(r * 0.8, -r * 0.9, r * 1.3, r * 0.1, 0, r * 0.9);
       break;
-    default: // crescent
+    case 11: // crescent
       ctx.arc(0, 0, r * 0.9, Math.PI * 0.35, Math.PI * 1.65);
       ctx.arc(r * 0.35, 0, r * 0.7, Math.PI * 1.45, Math.PI * 0.55, true);
+      break;
+    case 12: // triangle pointing down
+      polygon(ctx, [
+        [0, r],
+        [r, -r * 0.8],
+        [-r, -r * 0.8]
+      ]);
+      break;
+    case 13: // pentagon
+      polygon(ctx, star(r, r, 5));
+      break;
+    case 14: // chevron
+      polygon(ctx, [
+        [-r, -r * 0.9],
+        [r * 0.2, -r * 0.9],
+        [r, 0],
+        [r * 0.2, r * 0.9],
+        [-r, r * 0.9],
+        [-r * 0.35, 0]
+      ]);
+      break;
+    default: // drop
+      ctx.moveTo(0, -r);
+      ctx.bezierCurveTo(r * 1.1, r * 0.2, r * 0.7, r, 0, r);
+      ctx.bezierCurveTo(-r * 0.7, r, -r * 1.1, r * 0.2, 0, -r);
   }
   ctx.closePath();
   ctx.stroke();

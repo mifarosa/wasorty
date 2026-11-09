@@ -20,6 +20,7 @@
   --half: #fb7185;
   --oil: #f472b6;
   --master: #a855f7;
+  --giant: #06b6d4;
   --error: #ef4444;
   /* Earned stars, and the counts on the toolbar. */
   --star: #fbbf24;
@@ -531,6 +532,9 @@ button.icon {
 }
 .chapter[data-chapter='master'] {
   --difficulty: var(--master);
+}
+.chapter[data-chapter='giant'] {
+  --difficulty: var(--giant);
 }
 
 .chapter-header {

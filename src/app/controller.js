@@ -5,6 +5,7 @@ import {
   levelCountOf,
   LEVEL_COUNT,
   levelSettings,
+  GIANT_STAGE,
   MASTER_STAGE,
   rulesFirstUsedAt,
   specialRules,
@@ -117,6 +118,8 @@ export class GameController {
   #watch = null;
   /** Set while the win celebration plays; input waits until it is over. Pours do not block. */
   #animating = false;
+  /** Whether the puzzle on the board got its extra tube (one to a puzzle). */
+  #extraTube = false;
 
   /**
    * @param {object} deps
@@ -182,6 +185,7 @@ export class GameController {
     this.#startedAt = this.#puzzleDay.getTime();
     this.#level = this.#custom || this.#isDaily() ? null : this.#progress.current;
     this.#watch = null;
+    this.#extraTube = false;
     this.#dailyHints = DAILY_HINTS;
     if (this.#tries.level !== this.#level) this.#tries = { level: this.#level, count: 0 };
     const { tubes, board } = this.#custom
@@ -195,15 +199,7 @@ export class GameController {
     this.#session = new GameSession(board, tubes, { hiddenColors, undoLimit });
     this.#lastHint = null;
     this.#watchFewestMoves();
-    this.#scene.showPuzzle(this.#session.visibleTubes, {
-      sizes: tubes.map((_, index) => board.sizeOf(index)),
-      oilColors: [...board.oilColors],
-      kinds: tubes.map((_, index) => ({
-        oneWay: board.oneWay.has(index),
-        lockKey: board.locks.get(index) ?? null,
-        fills: board.cracked.get(index) ?? null
-      }))
-    });
+    this.#showBoard();
     this.#hud.hideWin();
     this.#menu.hide();
     this.#rules.hide();
@@ -215,6 +211,20 @@ export class GameController {
    * Works out the fewest moves of the new puzzle in the background. A puzzle replaced
    * meanwhile drops its answer.
    */
+  /** Puts the board of the session on the scene, as it is now. */
+  #showBoard() {
+    const { board, tubes } = this.#session;
+    this.#scene.showPuzzle(this.#session.visibleTubes, {
+      sizes: tubes.map((_, index) => board.sizeOf(index)),
+      oilColors: [...board.oilColors],
+      kinds: tubes.map((_, index) => ({
+        oneWay: board.oneWay.has(index),
+        lockKey: board.locks.get(index) ?? null,
+        fills: board.cracked.get(index) ?? null
+      }))
+    });
+  }
+
   #watchFewestMoves() {
     const session = this.#session;
     const puzzle = this.#custom
@@ -758,6 +768,44 @@ export class GameController {
 
   /** Whether an undo is possible: within the level's limit, or with a spare undo. */
   /**
+   * Whether the puzzle can take an extra empty tube: once to a puzzle, in the numbered levels
+   * only (the daily puzzle is ranked and a custom one is the maker's own), and not while the
+   * solution is being shown.
+   */
+  #tubeOffer() {
+    return (
+      this.#level !== null &&
+      !this.#custom &&
+      !this.#watch &&
+      !this.#extraTube &&
+      !this.#session.solved
+    );
+  }
+
+  /** The player asks for an extra tube: an app can offer an ad for it. */
+  offerTube() {
+    if (this.#animating) return;
+    if (this.#tubeOffer()) this.#hud.offerAd?.('tube');
+    else if (this.#extraTube) this.#hud.showToast(texts.tubeAlreadyAdded);
+  }
+
+  /**
+   * Adds the extra empty tube to the puzzle on the board.
+   * @returns {boolean} whether it was added
+   */
+  addTube() {
+    if (this.#animating || !this.#tubeOffer()) return false;
+    this.#putSelectionDown();
+    this.#session.addTube();
+    this.#extraTube = true;
+    this.#lastHint = null;
+    this.#showBoard();
+    this.#scene.showTubeStates(this.#tubeStates(), { instant: true });
+    this.#refreshHud();
+    return true;
+  }
+
+  /**
    * Whether the undos of this level are used up while there is a move to take back: the
    * moment an app can offer more (an ad). The levels without a limit never come to it.
    */
@@ -776,10 +824,14 @@ export class GameController {
    * Gives what a rewarded ad promised: hints for the puzzle on the board ('hint'; in the daily
    * puzzle they last until it is over), hints for the player's stock ('savedHint', from the win
    * dialog) or spare undos ('undo').
-   * @param {'hint' | 'savedHint' | 'undo'} kind
+   * @param {'hint' | 'savedHint' | 'undo' | 'tube'} kind 'tube' adds the extra empty tube
    * @param {number} [count]
    */
   grantReward(kind, count = AD_REWARD) {
+    if (kind === 'tube') {
+      if (this.addTube()) this.#hud.showToast(texts.rewardTube);
+      return;
+    }
     if (kind === 'hint' && this.#isDaily()) {
       this.#dailyHints += count;
     } else if (kind === 'hint' || kind === 'savedHint') {
@@ -841,6 +893,19 @@ export class GameController {
       progress: texts.chapterProgress(countSolved(masterLevels), MASTER_STAGE.count),
       difficulty: 4,
       levels: masterLevels
+    });
+
+    const giantLevels = this.#levelTiles(
+      STAGE_LEVEL_COUNT + MASTER_STAGE.count + 1,
+      GIANT_STAGE.count
+    );
+    chapters.push({
+      id: GIANT_STAGE.id,
+      name: texts.stageName(GIANT_STAGE.id),
+      detail: texts.stageDetail(GIANT_STAGE.id, GIANT_STAGE.undoLimit),
+      progress: texts.chapterProgress(countSolved(giantLevels), GIANT_STAGE.count),
+      difficulty: 4,
+      levels: giantLevels
     });
 
     return {
@@ -959,6 +1024,7 @@ export class GameController {
             : this.#levelSubtitle(session.moveCount),
       canUndo: this.#canUndo(),
       undoOffer: this.#undoOffer(),
+      tubeOffer: this.#tubeOffer(),
       undoCount: texts.undoCount(session.undosLeft, spare),
       undoLabel: texts.undoLabel(session.undosLeft, spare),
       hintCount: String(hints),

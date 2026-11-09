@@ -11,7 +11,8 @@ const stageNames = {
   locked: 'Locked Tube',
   half: 'Half Tube',
   oil: 'Oil',
-  master: 'Mixed'
+  master: 'Mixed',
+  giant: 'Giant'
 };
 const stageRules = {
   easy: 'Plain tubes',
@@ -22,7 +23,8 @@ const stageRules = {
   locked: 'Icy tube with a key color',
   half: 'Half tube of 2 units',
   oil: 'Oil that always floats on top',
-  master: '3–4 mixed rules in every level'
+  master: '3–4 mixed rules in every level',
+  giant: 'Boards of 12–16 colors'
 };
 const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
 const moves = (count) => plural(count, 'move', 'moves');
@@ -157,6 +159,8 @@ export const en = {
   earnedHint: 'Daily puzzle: +1 hint!',
   rewardHints: (count) => `+${count} hints`,
   rewardUndos: (count) => `+${count} spare undos`,
+  rewardTube: 'An extra empty tube was added.',
+  tubeAlreadyAdded: 'This level already has its extra tube.',
   attemptsTitle: 'Recent attempts',
   attemptMoves: (count) => moves(count),
   replay: 'Play again',
@@ -223,6 +227,11 @@ export const en = {
       'auth/network-request-failed': 'Could not connect. Check your internet.',
       'auth/unauthorized-domain': 'Sign-in is not set up for this address.',
       'invalid-credential': 'The sign-in could not be checked, try again.',
+      'auth/invalid-credential': 'The sign-in could not be checked, try again.',
+      'auth/operation-not-allowed': 'This way of signing in is not turned on yet.',
+      'provider-unavailable': 'This way of signing in is not available in this version.',
+      ERR_REQUEST_UNKNOWN:
+        'Apple could not sign you in. Is “Sign in with Apple” turned on for this app?',
       network: 'Could not reach the server. Check your internet.',
       'delete-failed': 'The account could not be deleted, try again.'
     })[code] ?? 'Something went wrong, try again.',

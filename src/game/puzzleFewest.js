@@ -7,7 +7,7 @@ import { fewestMoves, solveShortest } from './shortest.js';
  * The fewest moves of a puzzle named by its level number, its date, or a custom puzzle's
  * plain data: what the worker answers, and the page works out itself when it has no worker.
  *
- * The ready-made levels (1 to 300) look theirs up in a table worked out beforehand, so every
+ * The ready-made levels (every level of the game) look theirs up in a table worked out beforehand, so every
  * player sees the same number at once. The daily puzzle and custom puzzles
  * are searched for here: first for the shortest solution, and when that is too big, the
  * best of a few tries with fixed seeds, so the same puzzle gives the same number everywhere.

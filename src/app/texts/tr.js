@@ -11,7 +11,8 @@ const stageNames = {
   locked: 'Kilitli Tüp',
   half: 'Yarım Tüp',
   oil: 'Yağ',
-  master: 'Karışık'
+  master: 'Karışık',
+  giant: 'Dev'
 };
 const stageRules = {
   easy: 'Düz tüpler',
@@ -22,7 +23,8 @@ const stageRules = {
   locked: 'Anahtar renkli buzlu tüp',
   half: '2 birimlik yarım tüp',
   oil: 'Hep üstte duran yağ',
-  master: 'Her seviyede 3–4 karışık kural'
+  master: 'Her seviyede 3–4 karışık kural',
+  giant: '12–16 renkli dev tahtalar'
 };
 const moves = (count) => `${count} hamle`;
 /** Seconds as m:ss, or h:mm:ss past an hour. */
@@ -155,6 +157,8 @@ export const tr = {
     'Yenilik: günün bulmacasında artık özel kurallar da var. Bugünün bulmacası da değişti, eski sonuçların duruyor.',
   rewardHints: (count) => `+${count} ipucu`,
   rewardUndos: (count) => `+${count} ekstra geri alma`,
+  rewardTube: 'Fazladan bir boş tüp eklendi.',
+  tubeAlreadyAdded: 'Bu seviyenin fazladan tüpü zaten eklendi.',
   earnedHint: 'Günün bulmacası: +1 ipucu!',
   attemptsTitle: 'Son denemeler',
   attemptMoves: (moves) => `${moves} hamle`,
@@ -223,6 +227,10 @@ export const tr = {
       'auth/network-request-failed': 'Bağlantı kurulamadı. İnternetini kontrol et.',
       'auth/unauthorized-domain': 'Bu adres için giriş açılmamış.',
       'invalid-credential': 'Giriş doğrulanamadı, tekrar dene.',
+      'auth/invalid-credential': 'Giriş doğrulanamadı, tekrar dene.',
+      'auth/operation-not-allowed': 'Bu giriş yöntemi henüz açılmamış.',
+      'provider-unavailable': 'Bu giriş yöntemi bu sürümde yok.',
+      ERR_REQUEST_UNKNOWN: 'Apple giriş yapamadı. Bu uygulama için “Apple ile giriş” açık mı?',
       network: 'Sunucuya ulaşılamadı. İnternetini kontrol et.',
       'delete-failed': 'Hesap silinemedi, tekrar dene.'
     })[code] ?? 'Bir şeyler ters gitti, tekrar dene.',

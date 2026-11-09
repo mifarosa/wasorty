@@ -6,10 +6,12 @@ import { DailyBoard } from '../src/app/dailyBoard.js';
 import { GameController } from '../src/app/controller.js';
 import { loadDailyRecord, saveDailyRecord } from '../src/app/dailyResults.js';
 import { getLanguage, setLanguage } from '../src/app/i18n.js';
-import { loadProgress, saveProgress } from '../src/app/progress.js';
+import { INITIAL_PROGRESS, loadProgress, saveProgress } from '../src/app/progress.js';
 import { loadSettings, saveSettings } from '../src/app/settings.js';
+import { texts } from '../src/app/texts.js';
 import { fewestMovesOfPuzzle, solutionOfPuzzle } from '../src/game/puzzleFewest.js';
 import { confettiColors } from '../src/scene/palette.js';
+import { LeaderboardScreen } from './src/LeaderboardScreen.js';
 import { LevelsScreen } from './src/LevelsScreen.js';
 import { NativeBoard } from './src/NativeBoard.js';
 import { NativeConfetti } from './src/NativeConfetti.js';
@@ -23,6 +25,7 @@ import { Splash } from './src/Splash.js';
 import { Gloss, TapContext, glow } from './src/ui.js';
 import { WinCard } from './src/WinCard.js';
 import { startAds, watchRewardedAd } from './src/ads.js';
+import { createCloud, createNativeDailyStore } from './src/cloud/index.js';
 import { words } from './src/appTexts.js';
 import { LETTERS } from './src/brand.js';
 import { deviceLocale } from './src/deviceLocale.js';
@@ -49,6 +52,13 @@ export default function App() {
   const [rulesModel, setRulesModel] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [splash, setSplash] = useState(true);
+  // The account, how the sync goes, what to tell about a username, and which sign-ins exist.
+  const [accountState, setAccountState] = useState(null);
+  const [sync, setSync] = useState('idle');
+  const [accountMessage, setAccountMessage] = useState(null);
+  const [available, setAvailable] = useState({ apple: false, google: false });
+  // null while closed; `view` is null while the scores load
+  const [leaderboard, setLeaderboard] = useState(null);
   // Each win bumps this, which sends the confetti up.
   const [burst, setBurst] = useState(0);
   // The language the game runs in is the one it started with; the setting shows the pick.
@@ -78,14 +88,84 @@ export default function App() {
     []
   );
   const confetti = useMemo(() => confettiColors(paletteOf(settings.theme)), [settings.theme]);
+  // The sync is made after the daily board and the game, which it reads; they reach it here.
+  const cloudRef = useRef(null);
   const dailyBoard = useMemo(
     () =>
       new DailyBoard({
         record: loadDailyRecord(storage),
-        save: (record) => saveDailyRecord(record, storage),
-        service: null
+        save: (record) => {
+          saveDailyRecord(record, storage);
+          cloudRef.current?.cloudSync.schedule();
+        },
+        service: createNativeDailyStore()
       }),
     []
+  );
+  const cloud = useMemo(() => {
+    const made = createCloud({
+      storage,
+      getLocal: () => ({
+        progress: controller.current?.progress() ?? INITIAL_PROGRESS,
+        daily: dailyBoard.results()
+      }),
+      apply: ({ progress, daily }) => {
+        dailyBoard.mergeResults(daily);
+        controller.current?.applyProgress(progress);
+      }
+    });
+    cloudRef.current = made;
+    return made;
+  }, [dailyBoard]);
+
+  useEffect(() => {
+    setAccountState(cloud.account.state);
+    const stopAccount = cloud.account.onChange((next) => {
+      setAccountState(next);
+      // The username is the name on the leaderboard; what waited for one is shared now.
+      if (next.status === 'ready' && next.username) dailyBoard.setName(next.username, new Date());
+    });
+    const stopSync = cloud.cloudSync.onStatus(setSync);
+    // An earlier session is picked up once the board has been drawn.
+    const timer = setTimeout(() => cloud.account.restore().catch(() => {}), 1500);
+    const { apple, google } = cloud.providers;
+    Promise.all([apple?.available(), google?.available()])
+      .then(([hasApple, hasGoogle]) => setAvailable({ apple: !!hasApple, google: !!hasGoogle }))
+      .catch(() => {});
+    return () => {
+      stopAccount();
+      stopSync();
+      clearTimeout(timer);
+    };
+  }, [cloud, dailyBoard]);
+
+  const accountActions = useMemo(
+    () => ({
+      onSignIn: (provider) => {
+        setAccountMessage(null);
+        cloud.account.signIn(provider);
+      },
+      onSignOut: () => cloud.account.signOut().catch(() => {}),
+      onDelete: async () => {
+        await cloud.account.deleteAccount();
+      },
+      onSaveName: async (name) => {
+        const result = await cloud.account.claimUsername(name);
+        setAccountMessage(
+          result === 'ok'
+            ? null
+            : {
+                invalid: texts.usernameInvalid,
+                taken: texts.usernameTaken,
+                failed: texts.usernameFailed
+              }[result]
+        );
+      },
+      onRetry: () => {
+        if (cloud.cloudSync.status === 'failed') cloud.cloudSync.syncNow();
+      }
+    }),
+    [cloud]
   );
 
   useEffect(() => {
@@ -120,9 +200,12 @@ export default function App() {
         findSolution: (puzzle) => later(() => solutionOfPuzzle(puzzle)),
         onDailySolved: (day, result) => dailyBoard.record(day, result),
         getDailySummary: (today) => dailyBoard.summary(today),
-        leaderboardOnline: false,
+        leaderboardOnline: dailyBoard.online,
         progress: loadProgress(storage),
-        saveProgress: (progress) => saveProgress(progress, storage)
+        saveProgress: (progress) => {
+          saveProgress(progress, storage);
+          cloudRef.current?.cloudSync.schedule();
+        }
       });
       board.onTubeTap((index) => game.tapTube(index));
       board.onCue((cue) => feedback.cue(cue));
@@ -136,6 +219,14 @@ export default function App() {
   useEffect(() => {
     startAds();
   }, []);
+
+  const openLeaderboard = useCallback(async () => {
+    controller.current?.closeLevels();
+    setLeaderboard({ view: null });
+    const view = await dailyBoard.view(new Date());
+    // The player may have closed it while it loaded.
+    setLeaderboard((current) => (current ? { view } : null));
+  }, [dailyBoard]);
 
   const share = useCallback(async (message) => {
     try {
@@ -191,6 +282,7 @@ export default function App() {
 
           <View style={styles.toolbar}>
             <ToolButton
+              colors={colors}
               icon="undo-variant"
               color="#38bdf8"
               label={words.undo}
@@ -200,6 +292,7 @@ export default function App() {
               onPress={() => game()?.undo()}
             />
             <ToolButton
+              colors={colors}
               icon="lightbulb-on"
               color="#fbbf24"
               label={words.hint}
@@ -208,6 +301,19 @@ export default function App() {
               onPress={() => game()?.showHint()}
             />
             <ToolButton
+              colors={colors}
+              icon="beaker-plus-outline"
+              color="#34d399"
+              label={words.tube}
+              disabled={!view?.tubeOffer}
+              styles={styles}
+              onPress={() => {
+                feedback.tap();
+                game()?.offerTube();
+              }}
+            />
+            <ToolButton
+              colors={colors}
               icon="restart"
               color="#fb7185"
               label={words.restart}
@@ -218,7 +324,8 @@ export default function App() {
               }}
             />
             <ToolButton
-              icon="test-tube"
+              colors={colors}
+              icon="view-grid-outline"
               color="#a78bfa"
               label={view?.levelsLabel ?? words.levels}
               styles={styles}
@@ -245,6 +352,7 @@ export default function App() {
                 onWatch: () => game()?.watchSolution(),
                 onLevels: () => game()?.continueToLevels(),
                 onShare: share,
+                onLeaderboard: openLeaderboard,
                 // The ad is watched here; the game only hears whether it paid.
                 onWatchAd: async () => {
                   const result = await watchRewardedAd();
@@ -279,6 +387,7 @@ export default function App() {
               colors={colors}
               onPickLevel={(level) => game()?.playLevel(level)}
               onPickDaily={() => game()?.playDaily()}
+              onLeaderboard={dailyBoard.online ? openLeaderboard : null}
               onClose={() => game()?.closeLevels()}
             />
           ) : null}
@@ -289,6 +398,34 @@ export default function App() {
               colors={colors}
               onChange={changeSettings}
               onClose={() => setSettingsOpen(false)}
+              account={{
+                state: accountState ?? cloud.account.state,
+                sync,
+                message: accountMessage,
+                available,
+                actions: accountActions,
+                dark: colors.bar === 'light'
+              }}
+            />
+          ) : null}
+
+          {leaderboard ? (
+            <LeaderboardScreen
+              view={leaderboard.view}
+              account={{
+                signedIn: Boolean(accountState?.user),
+                username: accountState?.username ?? null
+              }}
+              colors={colors}
+              onSignIn={() => {
+                setLeaderboard(null);
+                setSettingsOpen(true);
+              }}
+              onPlayDaily={() => {
+                setLeaderboard(null);
+                game()?.playDaily();
+              }}
+              onClose={() => setLeaderboard(null)}
             />
           ) : null}
 

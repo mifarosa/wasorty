@@ -3,12 +3,20 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      'expo-haptics': fileURLToPath(new URL('./tests/stubs/expo-haptics.js', import.meta.url)),
-      'react-native-google-mobile-ads': fileURLToPath(
-        new URL('./tests/stubs/google-mobile-ads.js', import.meta.url)
-      )
-    }
+    alias: [
+      {
+        find: 'expo-haptics',
+        replacement: fileURLToPath(new URL('./tests/stubs/expo-haptics.js', import.meta.url))
+      },
+      {
+        find: 'react-native-google-mobile-ads',
+        replacement: fileURLToPath(new URL('./tests/stubs/google-mobile-ads.js', import.meta.url))
+      },
+      {
+        find: /^.*\/adsSdk\.js$/,
+        replacement: fileURLToPath(new URL('./tests/stubs/adsSdk.js', import.meta.url))
+      }
+    ]
   },
   test: {
     environment: 'node',

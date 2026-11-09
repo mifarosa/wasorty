@@ -314,3 +314,41 @@ describe('undo on boards with every kind of tube', () => {
     }
   );
 });
+
+describe('an extra tube', () => {
+  it('is empty, at the end, and survives undo and restart', () => {
+    const board = new Board();
+    const session = new GameSession(board, [[0, 1], [1, 0], []], { undoLimit: null });
+    session.tap(0);
+    session.tap(2);
+    expect(session.moveCount).toBe(1);
+
+    expect(session.addTube()).toBe(3);
+    expect(session.tubes).toHaveLength(4);
+    expect(session.tubes[3]).toEqual([]);
+    expect(session.visibleTubes).toHaveLength(4);
+
+    session.undo();
+    expect(session.tubes).toEqual([[0, 1], [1, 0], [], []]);
+    session.tap(0);
+    session.tap(3);
+    expect(session.tubes[3]).toEqual([1]);
+    session.restart();
+    expect(session.tubes).toEqual([[0, 1], [1, 0], [], []]);
+  });
+
+  it('can be poured into like any other empty tube', () => {
+    const session = new GameSession(
+      new Board(),
+      [
+        [0, 1, 0, 1],
+        [1, 0, 1, 0]
+      ],
+      {}
+    );
+    session.addTube();
+    expect(session.tap(0).type).toBe('selected');
+    expect(session.tap(2).type).toBe('poured');
+    expect(session.tubes[2]).toEqual([1]);
+  });
+});

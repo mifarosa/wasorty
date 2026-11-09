@@ -18,7 +18,7 @@ describe('the table of fewest moves', () => {
   });
 
   // If this fails, the levels changed: run `npm run bake` and commit the new table.
-  it('matches what the search finds, level by level', () => {
+  it('matches what the search finds, level by level', { timeout: 120_000 }, () => {
     for (let level = 1; level <= LEVEL_COUNT; level++) {
       const { tubes, board } = createLevelPuzzle(level);
       expect(solveShortest(tubes, { board, maxNodes: 2_000_000 })?.length, `level ${level}`).toBe(

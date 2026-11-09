@@ -15,7 +15,13 @@ import { TALL_TUBE_CAPACITY, TUBE_CAPACITY } from './rules.js';
  * @property {number} capacity units of each color, and what a full-size tube holds
  * @property {boolean} hiddenColors whether only the top unit of each tube shows at first
  * @property {number | null} undoLimit moves the player may take back; null for no limit
+ * @property {number} [dealNodes] the search steps allowed to prove a deal solvable; only boards of
+ *   many colors have it (see BIG_BOARD_COLORS)
  */
+
+/** From this many colors on a board is dealt with a search budget (see PuzzleSettings.dealNodes). */
+const BIG_BOARD_COLORS = 11;
+const BIG_BOARD_DEAL_NODES = 2000;
 
 const PLAIN = Object.freeze({
   halfTubeCount: 0,
@@ -58,6 +64,8 @@ export const BOARD_RULES = Object.freeze([
  * A part lists its levels (`count`), the colors rising across it, rules every level of it
  * adds (`also`), a range of rules drawn for each level (`pick`), and a rule whose tube comes
  * twice (`twice`). Drawn rules are fixed by the level number, so every player gets the same.
+ * A part may set its own undo limit (`undoLimit`, a number or null), which the long boards at
+ * the end of a stage have: forty moves are not three undos' worth.
  *
  * Difficulty was set by how often random play still solves a board (see the README), and by
  * keeping every level quick to deal.
@@ -79,7 +87,8 @@ export const STAGES = Object.freeze([
     parts: [
       { count: 5, colors: [5, 6] },
       { count: 10, colors: [6, 8] },
-      { count: 5, colors: [9, 10] }
+      { count: 5, colors: [9, 10] },
+      { count: 8, colors: [11, 12], undoLimit: 6 }
     ]
   },
   {
@@ -89,7 +98,8 @@ export const STAGES = Object.freeze([
     parts: [
       { count: 5, colors: [5, 6] },
       { count: 10, colors: [6, 7], also: ['oneWayTube'] },
-      { count: 10, colors: [7, 8], also: ['oneWayTube'] }
+      { count: 10, colors: [7, 8], also: ['oneWayTube'] },
+      { count: 8, colors: [10, 11], also: ['oneWayTube'], undoLimit: 6 }
     ]
   },
   {
@@ -113,7 +123,8 @@ export const STAGES = Object.freeze([
         count: 15,
         colors: [6, 8],
         pick: { from: ['oneWayTube', 'tallTubes', 'hiddenColors'], count: [2, 3] }
-      }
+      },
+      { count: 10, colors: [11, 12], undoLimit: 6 }
     ]
   },
   {
@@ -123,7 +134,8 @@ export const STAGES = Object.freeze([
     parts: [
       { count: 5, colors: [6, 7] },
       { count: 15, colors: [7, 7], pick: { from: ['crackedTube', 'oneWayTube'], count: [1, 1] } },
-      { count: 20, colors: [7, 9], twice: 'lockedTube' }
+      { count: 20, colors: [7, 9], twice: 'lockedTube' },
+      { count: 10, colors: [11, 12], undoLimit: 6 }
     ]
   },
   {
@@ -137,7 +149,8 @@ export const STAGES = Object.freeze([
         count: 20,
         colors: [6, 7],
         pick: { from: ['lockedTube', 'crackedTube', 'hiddenColors'], count: [2, 3] }
-      }
+      },
+      { count: 12, colors: [11, 13], undoLimit: 6 }
     ]
   },
   {
@@ -161,7 +174,8 @@ export const STAGES = Object.freeze([
           ],
           count: [2, 3]
         }
-      }
+      },
+      { count: 12, colors: [11, 12], undoLimit: 6 }
     ]
   }
 ]);
@@ -176,13 +190,25 @@ export const MASTER_STAGE = Object.freeze({
   colors: [5, 7]
 });
 
+/**
+ * The last 40 levels, after the master levels: plain boards of twelve colors and more, the kind
+ * of board a phone has room for when the tubes are drawn in four rows. The game ends there.
+ */
+export const GIANT_STAGE = Object.freeze({
+  id: 'giant',
+  count: 40,
+  rule: null,
+  undoLimit: 6,
+  colors: [12, 16]
+});
+
 const stageLevelCount = (stage) => stage.parts.reduce((sum, part) => sum + part.count, 0);
 
 /** Levels in the stages; every level after them is a master level. */
 export const STAGE_LEVEL_COUNT = STAGES.reduce((sum, stage) => sum + stageLevelCount(stage), 0);
 
-/** Every level of the game: the stages, then the master levels. */
-export const LEVEL_COUNT = STAGE_LEVEL_COUNT + MASTER_STAGE.count;
+/** Every level of the game: the stages, then the master levels, then the giant ones. */
+export const LEVEL_COUNT = STAGE_LEVEL_COUNT + MASTER_STAGE.count + GIANT_STAGE.count;
 
 /** The first level of each stage, by stage index. */
 export const STAGE_STARTS = Object.freeze(
@@ -194,24 +220,33 @@ export const STAGE_STARTS = Object.freeze(
 export const MAX_COLOR_COUNT = Math.max(
   DAILY_COLOR_COUNT,
   ...STAGES.flatMap((stage) => stage.parts.map((part) => part.colors[1])),
-  MASTER_STAGE.colors[1]
+  MASTER_STAGE.colors[1],
+  GIANT_STAGE.colors[1]
 );
 
 /** Seeds to try for one puzzle. Almost every puzzle comes from the first one. */
 const SEED_ATTEMPTS = 10;
 
+/** Whether a level is one of the master levels, right after the stages. */
 export function isMasterLevel(level) {
-  return level > STAGE_LEVEL_COUNT;
+  return level > STAGE_LEVEL_COUNT && level <= STAGE_LEVEL_COUNT + MASTER_STAGE.count;
 }
 
-/** The stage a level belongs to, or MASTER_STAGE after the stages. */
+/** Whether a level is one of the giant levels, the last of the game. */
+export function isGiantLevel(level) {
+  return level > STAGE_LEVEL_COUNT + MASTER_STAGE.count;
+}
+
+/** The stage a level belongs to: one of STAGES, then MASTER_STAGE, then GIANT_STAGE. */
 export function stageOfLevel(level) {
+  if (isGiantLevel(level)) return GIANT_STAGE;
   return isMasterLevel(level) ? MASTER_STAGE : STAGES[stageIndexOfLevel(level)];
 }
 
 /** How many levels a stage has. */
 export function levelCountOf(stage) {
-  return stage === MASTER_STAGE ? MASTER_STAGE.count : stageLevelCount(stage);
+  if (stage === MASTER_STAGE) return MASTER_STAGE.count;
+  return stage === GIANT_STAGE ? GIANT_STAGE.count : stageLevelCount(stage);
 }
 
 function stageIndexOfLevel(level) {
@@ -228,6 +263,13 @@ function stageIndexOfLevel(level) {
 export function levelSettings(level) {
   // Drawn rules and colors come from a seed of their own, so they never change a deal.
   const random = createRandom(hashString(`rules-${level}`));
+  if (isGiantLevel(level)) {
+    // Plain boards, the colors rising from the first giant level to the last.
+    const [from, to] = GIANT_STAGE.colors;
+    const step = level - STAGE_LEVEL_COUNT - MASTER_STAGE.count - 1;
+    const colorCount = from + Math.floor((step * (to - from + 1)) / GIANT_STAGE.count);
+    return buildSettings({ colorCount, rules: [], undoLimit: GIANT_STAGE.undoLimit });
+  }
   if (isMasterLevel(level)) {
     const rules = drawRules(random, MASTER_STAGE.pick);
     const [fewest, most] = MASTER_STAGE.colors;
@@ -251,7 +293,12 @@ export function levelSettings(level) {
     ...(part.also ?? []),
     ...(part.pick ? drawRules(random, part.pick) : [])
   ];
-  return buildSettings({ colorCount, rules, undoLimit: stage.undoLimit, twice: part.twice });
+  return buildSettings({
+    colorCount,
+    rules,
+    undoLimit: part.undoLimit === undefined ? stage.undoLimit : part.undoLimit,
+    twice: part.twice
+  });
 }
 
 /** Draws between `count[0]` and `count[1]` rules from `from`, in their stage order. */
@@ -286,7 +333,8 @@ function buildSettings({ colorCount, rules, undoLimit, twice = null }) {
     oilColorCount: has('oil') ? 1 : 0,
     capacity: has('tallTubes') ? TALL_TUBE_CAPACITY : TUBE_CAPACITY,
     hiddenColors: has('hiddenColors'),
-    undoLimit
+    undoLimit,
+    ...(colorCount >= BIG_BOARD_COLORS ? { dealNodes: BIG_BOARD_DEAL_NODES } : {})
   };
 }
 
@@ -314,7 +362,7 @@ export function specialRules(settings) {
  * @returns {SpecialRule[]}
  */
 export function rulesFirstUsedAt(level) {
-  if (isMasterLevel(level)) return [];
+  if (level > STAGE_LEVEL_COUNT) return [];
   const stageIndex = stageIndexOfLevel(level);
   if (level !== STAGE_STARTS[stageIndex]) return [];
 

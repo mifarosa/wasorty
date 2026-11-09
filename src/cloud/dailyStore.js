@@ -1,6 +1,5 @@
 import { rankKey } from '../game/dailyScore.js';
 import { RULES_FROM_DAY } from '../app/dailyResults.js';
-import { loadFirebase } from './firebase.js';
 
 /**
  * The daily puzzle's scores in Firebase: one document per player and day under
@@ -9,10 +8,11 @@ import { loadFirebase } from './firebase.js';
  *
  * It fits the LeaderboardService of app/dailyBoard.js.
  *
- * @param {{ load?: typeof loadFirebase }} [options]
+ * @param {{ load: () => Promise<object> }} options load gives { auth, db, store }, as in
+ *   firebaseBackend.js
  * @returns {import('../app/dailyBoard.js').LeaderboardService}
  */
-export function createDailyStore({ load = loadFirebase } = {}) {
+export function createDailyStore({ load }) {
   const scoresOf = (store, db, day) => store.collection(db, 'daily', day, 'scores');
 
   return {

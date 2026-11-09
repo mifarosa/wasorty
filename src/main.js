@@ -23,6 +23,7 @@ import { Account } from './cloud/account.js';
 import { CloudSync } from './cloud/cloudSync.js';
 import { createDailyStore } from './cloud/dailyStore.js';
 import { CLOUD_CONFIGURED } from './cloud/config.js';
+import { loadFirebase } from './cloud/firebase.js';
 import { createFirebaseBackend } from './cloud/firebaseBackend.js';
 import { Confetti } from './scene/confetti.js';
 import { TubeScene } from './scene/tubeScene.js';
@@ -63,7 +64,7 @@ const dailyBoard = new DailyBoard({
     saveDailyRecord(record);
     cloudSync?.schedule();
   },
-  service: CLOUD_CONFIGURED ? createDailyStore() : null
+  service: CLOUD_CONFIGURED ? createDailyStore({ load: loadFirebase }) : null
 });
 const { fewest: findFewestMoves, solution: findSolution } = createPuzzleSolver();
 // The editor draws the board being made with a scene of its own.
@@ -188,7 +189,7 @@ if (CLOUD_CONFIGURED) setUpAccount();
 
 function setUpAccount() {
   const panel = new AccountPanel(document);
-  const backend = createFirebaseBackend();
+  const backend = createFirebaseBackend({ load: loadFirebase });
   account = new Account(backend);
   cloudSync = new CloudSync({
     account,
@@ -215,7 +216,7 @@ function setUpAccount() {
   panel.bindActions({
     onSignIn: () => {
       message = null;
-      account.signIn();
+      account.signIn('google');
     },
     onSignOut: () => account.signOut(),
     onDelete: async () => {

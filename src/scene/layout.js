@@ -5,11 +5,14 @@ const FRAME_MARGIN = 0.9;
 /** Largest size of one world unit in pixels, so tubes do not get huge on big screens. */
 const MAX_SCALE = 150;
 
-/** Narrow screens get shorter rows, so the tubes stay large enough to tap. */
-function maxTubesPerRow(aspect) {
-  if (aspect < 0.75) return 4;
-  if (aspect < 1.2) return 5;
-  return 7;
+/**
+ * Narrow screens get shorter rows, so the tubes stay large enough to tap; a board of many
+ * tubes gets longer ones, since four rows of tubes would be too small to tap.
+ */
+function maxTubesPerRow(aspect, count) {
+  const base = aspect < 0.75 ? 4 : aspect < 1.2 ? 5 : 7;
+  if (count <= 12) return base;
+  return base + Math.min(3, Math.ceil((count - 12) / 3));
 }
 
 /**
@@ -20,7 +23,7 @@ function maxTubesPerRow(aspect) {
  * @returns {{ positions: Array<{ x: number, y: number }>, bounds: { width: number, top: number, bottom: number } }}
  */
 export function arrangeTubes(count, aspect, tubeHeight = TUBE_HEIGHT) {
-  const rows = Math.ceil(count / maxTubesPerRow(aspect));
+  const rows = Math.ceil(count / maxTubesPerRow(aspect, count));
   const perRow = Math.ceil(count / rows);
   const rowSpacing = tubeHeight + ROW_GAP;
 

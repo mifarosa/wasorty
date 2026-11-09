@@ -53,6 +53,9 @@ export function WinCard({ win, colors, actions }) {
           <Button label={texts.replay} onPress={actions.onReplay} colors={colors} />
           <Button label={win.continueLabel} onPress={actions.onContinue} colors={colors} primary />
         </View>
+        {win.leaderboard ? (
+          <Button label={words.leaderboard} onPress={actions.onLeaderboard} colors={colors} />
+        ) : null}
         <Button label={adLabel} onPress={watchAd} colors={colors} />
         {adNote ? <Text style={{ color: colors.muted, textAlign: 'center' }}>{adNote}</Text> : null}
         <View style={styles.actions}>
