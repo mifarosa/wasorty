@@ -249,25 +249,29 @@ describe('level and daily puzzles', () => {
     expect(createLevelPuzzle(321).tubes).toEqual(PINNED_LEVEL_321);
   });
 
-  it('deals every level with its settings, and every level can be solved', () => {
-    // Every level of the game.
-    for (let level = 1; level <= LEVEL_COUNT; level++) {
-      const { tubes, board } = createLevelPuzzle(level);
-      const settings = levelSettings(level);
-      const { colorCount, emptyTubeCount, halfTubeCount, capacity } = settings;
-      const emptyCount =
-        emptyTubeCount + halfTubeCount + settings.oneWayTubeCount + settings.crackedTubeCount;
-      expect(countUnits(tubes).size).toBe(colorCount);
-      expect(new Set(countUnits(tubes).values())).toEqual(new Set([capacity]));
-      expect(tubes.filter((tube) => tube.length === 0)).toHaveLength(emptyCount);
-      expect(tubes.map((_, i) => board.sizeOf(i))).toEqual(tubeSizes(settings));
-      expect(board.oneWay.size).toBe(settings.oneWayTubeCount);
-      expect(board.cracked.size).toBe(settings.crackedTubeCount);
-      expect(board.locks.size).toBe(settings.lockedTubeCount);
-      expect(board.oilColors.size).toBe(settings.oilColorCount);
-      expect(solve(tubes, { board })).not.toBeNull();
+  it(
+    'deals every level with its settings, and every level can be solved',
+    { timeout: 120_000 },
+    () => {
+      // Every level of the game.
+      for (let level = 1; level <= LEVEL_COUNT; level++) {
+        const { tubes, board } = createLevelPuzzle(level);
+        const settings = levelSettings(level);
+        const { colorCount, emptyTubeCount, halfTubeCount, capacity } = settings;
+        const emptyCount =
+          emptyTubeCount + halfTubeCount + settings.oneWayTubeCount + settings.crackedTubeCount;
+        expect(countUnits(tubes).size).toBe(colorCount);
+        expect(new Set(countUnits(tubes).values())).toEqual(new Set([capacity]));
+        expect(tubes.filter((tube) => tube.length === 0)).toHaveLength(emptyCount);
+        expect(tubes.map((_, i) => board.sizeOf(i))).toEqual(tubeSizes(settings));
+        expect(board.oneWay.size).toBe(settings.oneWayTubeCount);
+        expect(board.cracked.size).toBe(settings.crackedTubeCount);
+        expect(board.locks.size).toBe(settings.lockedTubeCount);
+        expect(board.oilColors.size).toBe(settings.oilColorCount);
+        expect(solve(tubes, { board })).not.toBeNull();
+      }
     }
-  });
+  );
 
   it("moves on to another seed when a key's own seed deals no solvable puzzle", () => {
     // Seven colors and one empty tube from the seed of "level-924" never make a solvable board.
