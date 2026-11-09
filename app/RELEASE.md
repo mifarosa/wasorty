@@ -68,9 +68,25 @@ girince sitedeki hesapla aynı hesap olur.
 
 - **Apple:** hazır. Apple Developer'da `com.mifarosa.wasorty` için _Sign in with Apple_ açık olmalı
   ve Firebase konsolunda _Authentication → Sign-in method → Apple_ etkin olmalı.
-- **Google:** iki değer girilene kadar düğme görünmez (`app/src/cloud/authConfig.js`):
-  `GOOGLE_WEB_CLIENT_ID` (Firebase → Google → Web client ID) ve `GOOGLE_IOS_CLIENT_ID`
-  (`GoogleService-Info.plist` → `CLIENT_ID`). Ayrıca `app.json` → `plugins` içine
-  `["@react-native-google-signin/google-signin", { "iosUrlScheme": "<REVERSED_CLIENT_ID>" }]`
-  eklenir; bu bir native değişikliktir, `runtimeVersion` artar.
+- **Google:** hazır. İki istemci kimliği `app/src/cloud/authConfig.js`'te, `REVERSED_CLIENT_ID` ise
+  `app.json` → `plugins` içinde (`@react-native-google-signin/google-signin` → `iosUrlScheme`).
+  Üçü aynı iOS kimliğinden türer; bir test bunların tutarlılığını kontrol eder. Kimlikler
+  değişirse üçünü birlikte değiştir (native bir değişikliktir, `runtimeVersion` artar).
 - Bağlantı yoksa oyun oynanır; hesap ve senkron hata gösterir, sonra yeniden dener.
+
+## Build ve TestFlight'a gönderme, tek komutla
+
+`eas.json` içinde `submit.production.ios.ascAppId` (App Store Connect'teki uygulamanın Apple ID'si,
+TestFlight çökme raporlarında `itemID` olarak geçen sayı) yazılı, bu yüzden gönderirken bir şey
+sormaz. Build bitince kendiliğinden TestFlight'a yüklensin:
+
+```bash
+cd app
+npx eas-cli build -p ios --profile production --auto-submit
+```
+
+Ayrı ayrı yapmak istersen: `npx eas-cli build -p ios --profile production`, sonra
+`npx eas-cli submit -p ios --latest`. Yüklemeden sonra App Store Connect işlemeyi bitirir
+(10–30 dakika, e-posta gelir); sonra TestFlight'ta yeni sürümü kurarsın.
+
+Şifreleme (export compliance) sorusu çıkmaz: `app.json` → `ITSAppUsesNonExemptEncryption` `false`.

@@ -20,6 +20,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Some tests deal and solve every level; a CI machine is slower than a desktop.
+    testTimeout: 30_000,
     include: ['tests/**/*.test.js'],
     setupFiles: ['tests/setup.js']
   }

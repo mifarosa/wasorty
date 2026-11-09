@@ -7,5 +7,7 @@
  * GOOGLE_IOS_CLIENT_ID: CLIENT_ID of GoogleService-Info.plist
  * The REVERSED_CLIENT_ID of the same file goes into app.json (the google-signin plugin).
  */
-export const GOOGLE_WEB_CLIENT_ID = '';
-export const GOOGLE_IOS_CLIENT_ID = '';
+export const GOOGLE_WEB_CLIENT_ID =
+  '268054495832-4lhs82hroumr7s74n6g7m5na5v1fpmug.apps.googleusercontent.com';
+export const GOOGLE_IOS_CLIENT_ID =
+  '268054495832-c4tcddd7dcd6st77408if73a9t3evpgo.apps.googleusercontent.com';
