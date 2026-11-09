@@ -73,3 +73,20 @@ girince sitedeki hesapla aynı hesap olur.
   Üçü aynı iOS kimliğinden türer; bir test bunların tutarlılığını kontrol eder. Kimlikler
   değişirse üçünü birlikte değiştir (native bir değişikliktir, `runtimeVersion` artar).
 - Bağlantı yoksa oyun oynanır; hesap ve senkron hata gösterir, sonra yeniden dener.
+
+## Build ve TestFlight'a gönderme, tek komutla
+
+`eas.json` içinde `submit.production.ios.ascAppId` (App Store Connect'teki uygulamanın Apple ID'si,
+TestFlight çökme raporlarında `itemID` olarak geçen sayı) yazılı, bu yüzden gönderirken bir şey
+sormaz. Build bitince kendiliğinden TestFlight'a yüklensin:
+
+```bash
+cd app
+npx eas-cli build -p ios --profile production --auto-submit
+```
+
+Ayrı ayrı yapmak istersen: `npx eas-cli build -p ios --profile production`, sonra
+`npx eas-cli submit -p ios --latest`. Yüklemeden sonra App Store Connect işlemeyi bitirir
+(10–30 dakika, e-posta gelir); sonra TestFlight'ta yeni sürümü kurarsın.
+
+Şifreleme (export compliance) sorusu çıkmaz: `app.json` → `ITSAppUsesNonExemptEncryption` `false`.
