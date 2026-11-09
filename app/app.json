@@ -32,7 +32,13 @@
           "skAdNetworkItems": ["cstr6suwn9.skadnetwork"]
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.268054495832-c4tcddd7dcd6st77408if73a9t3evpgo"
+        }
+      ]
     ],
     "owner": "mifarosacom",
     "extra": {

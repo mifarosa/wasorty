@@ -68,9 +68,8 @@ girince sitedeki hesapla aynı hesap olur.
 
 - **Apple:** hazır. Apple Developer'da `com.mifarosa.wasorty` için _Sign in with Apple_ açık olmalı
   ve Firebase konsolunda _Authentication → Sign-in method → Apple_ etkin olmalı.
-- **Google:** iki değer girilene kadar düğme görünmez (`app/src/cloud/authConfig.js`):
-  `GOOGLE_WEB_CLIENT_ID` (Firebase → Google → Web client ID) ve `GOOGLE_IOS_CLIENT_ID`
-  (`GoogleService-Info.plist` → `CLIENT_ID`). Ayrıca `app.json` → `plugins` içine
-  `["@react-native-google-signin/google-signin", { "iosUrlScheme": "<REVERSED_CLIENT_ID>" }]`
-  eklenir; bu bir native değişikliktir, `runtimeVersion` artar.
+- **Google:** hazır. İki istemci kimliği `app/src/cloud/authConfig.js`'te, `REVERSED_CLIENT_ID` ise
+  `app.json` → `plugins` içinde (`@react-native-google-signin/google-signin` → `iosUrlScheme`).
+  Üçü aynı iOS kimliğinden türer; bir test bunların tutarlılığını kontrol eder. Kimlikler
+  değişirse üçünü birlikte değiştir (native bir değişikliktir, `runtimeVersion` artar).
 - Bağlantı yoksa oyun oynanır; hesap ve senkron hata gösterir, sonra yeniden dener.
