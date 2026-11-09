@@ -302,6 +302,18 @@ export default function App() {
             />
             <ToolButton
               colors={colors}
+              icon="beaker-plus-outline"
+              color="#34d399"
+              label={words.tube}
+              disabled={!view?.tubeOffer}
+              styles={styles}
+              onPress={() => {
+                feedback.tap();
+                game()?.offerTube();
+              }}
+            />
+            <ToolButton
+              colors={colors}
               icon="restart"
               color="#fb7185"
               label={words.restart}
@@ -313,7 +325,7 @@ export default function App() {
             />
             <ToolButton
               colors={colors}
-              icon="test-tube"
+              icon="view-grid-outline"
               color="#a78bfa"
               label={view?.levelsLabel ?? words.levels}
               styles={styles}

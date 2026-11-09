@@ -100,7 +100,8 @@ export class Board {
   }
 
   sizeOf(index) {
-    return this.sizes ? this.sizes[index] : this.capacity;
+    // A tube added after the deal (see GameSession.addTube) is a plain one.
+    return this.sizes?.[index] ?? this.capacity;
   }
 
   isOil(color) {

@@ -16,6 +16,7 @@ import { Button, Dialog } from './ui.js';
 export function OfferDialog({ kind, colors, onRewarded, onClose }) {
   const [status, setStatus] = useState('idle');
   const hint = kind === 'hint';
+  const tube = kind === 'tube';
 
   async function watch() {
     if (status === 'loading') return;
@@ -36,17 +37,17 @@ export function OfferDialog({ kind, colors, onRewarded, onClose }) {
     <Dialog colors={colors} onDismiss={status === 'loading' ? undefined : onClose}>
       <View style={styles.body}>
         <Text style={[styles.title, { color: colors.ink }]}>
-          {hint ? words.offerHintTitle : words.offerUndoTitle}
+          {tube ? words.offerTubeTitle : hint ? words.offerHintTitle : words.offerUndoTitle}
         </Text>
         <Text style={{ color: colors.muted, textAlign: 'center' }}>
-          {hint ? words.offerHintText : words.offerUndoText}
+          {tube ? words.offerTubeText : hint ? words.offerHintText : words.offerUndoText}
         </Text>
         {message ? (
           <Text style={{ color: colors.accent, textAlign: 'center' }}>{message}</Text>
         ) : null}
         <View style={styles.actions}>
           <Button
-            label={hint ? words.watchAdHints : words.watchAdUndos}
+            label={tube ? words.watchAdTube : hint ? words.watchAdHints : words.watchAdUndos}
             onPress={watch}
             colors={colors}
             primary

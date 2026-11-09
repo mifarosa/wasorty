@@ -146,6 +146,7 @@ describe('GameController', () => {
       subtitle: 'Kolay · 0 hamle',
       canUndo: false,
       undoOffer: false,
+      tubeOffer: true,
       undoCount: null,
       undoLabel: 'Geri al',
       hintCount: '2',

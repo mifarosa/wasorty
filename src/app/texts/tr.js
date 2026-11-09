@@ -157,6 +157,8 @@ export const tr = {
     'Yenilik: günün bulmacasında artık özel kurallar da var. Bugünün bulmacası da değişti, eski sonuçların duruyor.',
   rewardHints: (count) => `+${count} ipucu`,
   rewardUndos: (count) => `+${count} ekstra geri alma`,
+  rewardTube: 'Fazladan bir boş tüp eklendi.',
+  tubeAlreadyAdded: 'Bu seviyenin fazladan tüpü zaten eklendi.',
   earnedHint: 'Günün bulmacası: +1 ipucu!',
   attemptsTitle: 'Son denemeler',
   attemptMoves: (moves) => `${moves} hamle`,

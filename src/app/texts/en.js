@@ -159,6 +159,8 @@ export const en = {
   earnedHint: 'Daily puzzle: +1 hint!',
   rewardHints: (count) => `+${count} hints`,
   rewardUndos: (count) => `+${count} spare undos`,
+  rewardTube: 'An extra empty tube was added.',
+  tubeAlreadyAdded: 'This level already has its extra tube.',
   attemptsTitle: 'Recent attempts',
   attemptMoves: (count) => moves(count),
   replay: 'Play again',

@@ -101,3 +101,97 @@ describe('offering an ad when the hints or the undos are used up', () => {
     expect(hud.state.offer).toBeNull();
   });
 });
+
+describe('the extra tube', () => {
+  let hud;
+  let scene;
+
+  function start(progress = { ...INITIAL_PROGRESS }) {
+    hud = new NativeHud();
+    scene = new Proxy(
+      {
+        pour: () => Promise.resolve(),
+        celebrate: () => Promise.resolve(),
+        showPuzzle: vi.fn(),
+        showTubeStates: vi.fn()
+      },
+      { get: (target, key) => target[key] ?? (() => {}) }
+    );
+    const game = new GameController({
+      scene,
+      hud,
+      menu: new NativeMenu(),
+      rules: new NativeRules(),
+      feedback: { pick() {}, putDown() {}, reject() {}, undo() {}, hint() {}, win() {} },
+      findFewestMoves: (puzzle) => Promise.resolve(fewestMovesOfPuzzle(puzzle)),
+      progress,
+      saveProgress: () => {}
+    });
+    game.start();
+    return game;
+  }
+
+  const lastBoard = () => scene.showPuzzle.mock.lastCall[0];
+
+  beforeEach(() => setLanguage('en'));
+
+  it('is offered on a level, and the ad adds one empty tube to the board', () => {
+    const game = start();
+    const before = lastBoard().length;
+    expect(hud.state.view.tubeOffer).toBe(true);
+
+    game.offerTube();
+    expect(hud.state.offer).toEqual({ kind: 'tube' });
+
+    game.grantReward('tube');
+    expect(lastBoard()).toHaveLength(before + 1);
+    expect(lastBoard().at(-1)).toEqual([]);
+    expect(hud.state.toast).toBe('An extra empty tube was added.');
+    expect(hud.state.view.tubeOffer).toBe(false);
+  });
+
+  it('is given once to a level, and again on the next one', () => {
+    const game = start();
+    game.grantReward('tube');
+    const count = lastBoard().length;
+    game.grantReward('tube');
+    expect(lastBoard()).toHaveLength(count);
+
+    hud.closeOffer();
+    game.offerTube();
+    expect(hud.state.offer).toBeNull();
+    expect(hud.state.toast).toBe('This level already has its extra tube.');
+
+    game.restart();
+    expect(lastBoard()).toHaveLength(count);
+    game.playLevel(1);
+    expect(lastBoard()).toHaveLength(count - 1);
+    expect(hud.state.view.tubeOffer).toBe(true);
+  });
+
+  it('is not offered in the daily puzzle, which is ranked', () => {
+    const game = start();
+    game.playDaily();
+    expect(hud.state.view.tubeOffer).toBe(false);
+    game.offerTube();
+    expect(hud.state.offer).toBeNull();
+    const count = lastBoard().length;
+    game.grantReward('tube');
+    expect(lastBoard()).toHaveLength(count);
+  });
+
+  it('keeps the moves already made, and lets them be taken back', async () => {
+    const game = start({ ...INITIAL_PROGRESS, solved: 79, current: 80 });
+    const { tubes, board } = createLevelPuzzle(80);
+    const [first] = solve(tubes, { board });
+    await game.tapTube(first[0]);
+    await game.tapTube(first[1]);
+    expect(hud.state.view.canUndo).toBe(true);
+
+    game.grantReward('tube');
+    expect(hud.state.view.canUndo).toBe(true);
+    game.undo();
+    // Back at the start, with the extra tube still there.
+    expect(lastBoard()).toHaveLength(tubes.length + 1);
+  });
+});
