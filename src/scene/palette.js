@@ -14,7 +14,11 @@ export const LIQUID_COLORS = [
   '#92400e', // brown
   '#94a3b8', // gray
   '#84cc16', // lime
-  '#1e3a8a' // navy
+  '#1e3a8a', // navy
+  '#38bdf8', // sky
+  '#86198f', // plum
+  '#fdba74', // peach
+  '#166534' // forest
 ];
 
 /** A unit whose color the player has not seen yet: a dark, neutral fill with a question mark. */
@@ -25,7 +29,7 @@ export const HIDDEN_MARK_COLOR = '#c9d1ee';
 export const ICE_COLOR = 'rgba(190, 225, 255, 0.55)';
 export const LOCK_INK = '#0b1430';
 
-/** Neon Gece: the same twelve hues, lit up, to glow on a dark night. */
+/** Neon Gece: the same sixteen hues, lit up, to glow on a dark night. */
 export const NEON_COLORS = [
   '#ff3864', // red
   '#3d7bff', // blue
@@ -38,7 +42,11 @@ export const NEON_COLORS = [
   '#d9a066', // brown, as warm sand
   '#e4e8ff', // gray, as white light
   '#c6ff1a', // lime
-  '#5b4bff' // navy, as indigo
+  '#5b4bff', // navy, as indigo
+  '#66d9ff', // sky
+  '#c21fd8', // plum, as ultraviolet
+  '#ffc58a', // peach
+  '#0fae5a' // forest, as green light
 ];
 
 /** Kokteyl Bar: the same hues as drinks, warmer, for a bar's amber light. */
@@ -54,7 +62,11 @@ export const COCKTAIL_COLORS = [
   '#7f4f24', // cola
   '#efe6d2', // piña colada
   '#a7c957', // lime
-  '#5a189a' // blackberry
+  '#5a189a', // blackberry
+  '#7ccaf0', // gin and tonic
+  '#a4133c', // sangria
+  '#ffb694', // peach bellini
+  '#2d6a4f' // mint julep
 ];
 
 /** Confetti: the brightest colors of a palette, so it matches the tubes it celebrates. */

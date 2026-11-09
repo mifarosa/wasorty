@@ -5,6 +5,7 @@ import {
   levelCountOf,
   LEVEL_COUNT,
   levelSettings,
+  GIANT_STAGE,
   MASTER_STAGE,
   rulesFirstUsedAt,
   specialRules,
@@ -841,6 +842,19 @@ export class GameController {
       progress: texts.chapterProgress(countSolved(masterLevels), MASTER_STAGE.count),
       difficulty: 4,
       levels: masterLevels
+    });
+
+    const giantLevels = this.#levelTiles(
+      STAGE_LEVEL_COUNT + MASTER_STAGE.count + 1,
+      GIANT_STAGE.count
+    );
+    chapters.push({
+      id: GIANT_STAGE.id,
+      name: texts.stageName(GIANT_STAGE.id),
+      detail: texts.stageDetail(GIANT_STAGE.id, GIANT_STAGE.undoLimit),
+      progress: texts.chapterProgress(countSolved(giantLevels), GIANT_STAGE.count),
+      difficulty: 4,
+      levels: giantLevels
     });
 
     return {

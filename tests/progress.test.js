@@ -1,3 +1,4 @@
+import { LEVEL_COUNT } from '../src/game/levels.js';
 import { describe, expect, it } from 'vitest';
 import { localDateKey } from '../src/app/calendar.js';
 import { INITIAL_HINTS } from '../src/app/economy.js';
@@ -93,12 +94,12 @@ describe('normalizeProgress', () => {
     expect(normalizeProgress({ solved: 4, current: 0 }).current).toBe(1);
   });
 
-  it('ends at level 300', () => {
+  it('ends at the last level', () => {
     expect(normalizeProgress({ solved: 900, current: 901 })).toMatchObject({
-      solved: 300,
-      current: 300
+      solved: LEVEL_COUNT,
+      current: LEVEL_COUNT
     });
-    expect(lastOpenLevel({ solved: 300 })).toBe(300);
+    expect(lastOpenLevel({ solved: LEVEL_COUNT })).toBe(LEVEL_COUNT);
   });
 
   it('reads saves from before the level list, which kept only the next level', () => {

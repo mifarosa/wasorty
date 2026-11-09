@@ -6,6 +6,8 @@ import {
   createLevelPuzzle,
   dailySettings,
   dealPuzzle,
+  GIANT_STAGE,
+  isGiantLevel,
   isMasterLevel,
   levelCountOf,
   levelSettings,
@@ -24,7 +26,8 @@ import { topRun, TUBE_CAPACITY } from '../src/game/rules.js';
 import { solve } from '../src/game/solver.js';
 
 // The first one-way level and the first master level, written out by hand so a change to the
-// dealing shows up here.
+// dealing shows up here. (Levels 17 and on were renumbered when the long boards came into the
+// stages; level 16 is the same as it always was.)
 const PINNED_LEVEL_16 = [
   [0, 2, 3, 1],
   [1, 3, 4, 2],
@@ -34,13 +37,14 @@ const PINNED_LEVEL_16 = [
   [],
   []
 ];
-const PINNED_LEVEL_261 = [
-  [1, 2, 3, 2, 0],
-  [1, 4, 3, 0, 0],
-  [2, 3, 4, 1, 0],
-  [2, 3, 4, 1, 0],
-  [3, 4, 1, 4, 2],
-  [],
+const PINNED_LEVEL_321 = [
+  [2, 5, 1, 0, 6],
+  [5, 2, 3, 2, 1],
+  [3, 3, 6, 6, 0],
+  [4, 4, 4, 6, 4],
+  [1, 5, 3, 1, 4],
+  [1, 0, 6, 5, 2],
+  [2, 3, 0, 5, 0],
   [],
   []
 ];
@@ -87,12 +91,13 @@ describe('stages', () => {
       'half',
       'oil'
     ]);
-    expect(STAGE_STARTS).toEqual([1, 16, 36, 61, 91, 126, 166, 211]);
-    expect(STAGE_LEVEL_COUNT).toBe(260);
+    expect(STAGE_STARTS).toEqual([1, 16, 44, 77, 107, 152, 202, 259]);
+    expect(STAGE_LEVEL_COUNT).toBe(320);
     expect(STAGES.map((stage) => stage.undoLimit)).toEqual([null, 4, 4, 3, 3, 3, 3, 3]);
-    expect(levelSettings(261).undoLimit).toBe(3);
-    expect(stageOfLevel(260).id).toBe('oil');
-    expect(stageOfLevel(261)).toBe(MASTER_STAGE);
+    expect(levelSettings(321).undoLimit).toBe(3);
+    expect(stageOfLevel(320).id).toBe('oil');
+    expect(stageOfLevel(321)).toBe(MASTER_STAGE);
+    expect(stageOfLevel(361)).toBe(GIANT_STAGE);
   });
 
   it('keep the easy stage plain, with three colors and then four and five', () => {
@@ -125,28 +130,56 @@ describe('stages', () => {
   });
 
   it('follow the parts of the plan', () => {
-    // 41–50: tall tubes with one-way tubes; 76–90: hidden with both earlier rules.
-    expect(rulesOf(45)).toEqual(['limitedUndo', 'oneWayTube', 'tallTubes']);
-    expect(rulesOf(80)).toEqual(['limitedUndo', 'oneWayTube', 'tallTubes', 'hiddenColors']);
-    // 146–165: two locks.
-    expect(levelSettings(150).lockedTubeCount).toBe(2);
-    // 171–190: half tubes with tall tubes.
-    expect(rulesOf(180)).toEqual(['limitedUndo', 'tallTubes', 'halfTube']);
-    // 236–260: oil with two or three earlier rules.
-    for (let level = 236; level <= 260; level++) {
+    // 49–58: tall tubes with one-way tubes; 92–106: hidden with both earlier rules.
+    expect(rulesOf(53)).toEqual(['limitedUndo', 'oneWayTube', 'tallTubes']);
+    expect(rulesOf(100)).toEqual(['limitedUndo', 'oneWayTube', 'tallTubes', 'hiddenColors']);
+    // 172–191: two locks.
+    expect(levelSettings(180).lockedTubeCount).toBe(2);
+    // 207–226: half tubes with tall tubes.
+    expect(rulesOf(215)).toEqual(['limitedUndo', 'tallTubes', 'halfTube']);
+    // 284–308: oil with two or three earlier rules.
+    for (let level = 284; level <= 308; level++) {
       expect(rulesOf(level).length - 2).toBeGreaterThanOrEqual(2);
     }
   });
 
-  it('has 300 levels, the last 40 of them master levels', () => {
-    expect(LEVEL_COUNT).toBe(300);
+  it('end every stage but the hidden one with long boards of eleven colors and more', () => {
+    // The last levels of a stage, each with their own undo limit: forty moves are not three
+    // undos' worth.
+    const ends = { 1: 43, 2: 76, 4: 151, 5: 201, 6: 258, 7: 320 };
+    for (const [index, last] of Object.entries(ends)) {
+      const level = last; // the last level of the stage
+      expect(levelSettings(level).colorCount, `level ${level}`).toBeGreaterThanOrEqual(10);
+      expect(levelSettings(level).undoLimit).toBe(6);
+      expect(stageOfLevel(level).id).toBe(STAGES[index].id);
+    }
+    expect(levelSettings(106).colorCount).toBeLessThanOrEqual(8);
+  });
+
+  it('has 400 levels: the stages, 40 master levels and 40 giant ones', () => {
+    expect(LEVEL_COUNT).toBe(400);
     expect(levelCountOf(MASTER_STAGE)).toBe(40);
-    expect(isMasterLevel(260)).toBe(false);
-    expect(isMasterLevel(300)).toBe(true);
+    expect(levelCountOf(GIANT_STAGE)).toBe(40);
+    expect(isMasterLevel(320)).toBe(false);
+    expect(isMasterLevel(321)).toBe(true);
+    expect(isMasterLevel(360)).toBe(true);
+    expect(isMasterLevel(361)).toBe(false);
+    expect(isGiantLevel(361)).toBe(true);
+    expect(isGiantLevel(400)).toBe(true);
+  });
+
+  it('make the giant levels plain boards of twelve colors rising to sixteen', () => {
+    for (let level = 361; level <= LEVEL_COUNT; level++) {
+      expect(rulesOf(level)).toEqual(['limitedUndo']);
+      expect(levelSettings(level).colorCount).toBeGreaterThanOrEqual(12);
+      expect(levelSettings(level).colorCount).toBeLessThanOrEqual(16);
+    }
+    expect(levelSettings(361).colorCount).toBe(12);
+    expect(levelSettings(400).colorCount).toBe(16);
   });
 
   it('mix three or four rules into every master level, the same for everyone', () => {
-    for (let level = 261; level <= LEVEL_COUNT; level++) {
+    for (let level = 321; level <= 360; level++) {
       const count = rulesOf(level).filter((rule) => rule !== 'limitedUndo').length;
       expect(count).toBeGreaterThanOrEqual(3);
       expect(count).toBeLessThanOrEqual(4);
@@ -175,10 +208,10 @@ describe('stages', () => {
 describe('rulesFirstUsedAt', () => {
   it('names the stage rule and a new undo limit at the first level of a stage, and only there', () => {
     expect(rulesFirstUsedAt(16)).toEqual(['limitedUndo', 'oneWayTube']);
-    expect(rulesFirstUsedAt(36)).toEqual(['tallTubes']);
-    expect(rulesFirstUsedAt(61)).toEqual(['limitedUndo', 'hiddenColors']);
-    expect(rulesFirstUsedAt(211)).toEqual(['oil']);
-    for (const level of [1, 2, 17, 60, 62, 260, 261, 300]) {
+    expect(rulesFirstUsedAt(44)).toEqual(['tallTubes']);
+    expect(rulesFirstUsedAt(77)).toEqual(['limitedUndo', 'hiddenColors']);
+    expect(rulesFirstUsedAt(259)).toEqual(['oil']);
+    for (const level of [1, 2, 17, 60, 62, 320, 321, 400]) {
       expect(rulesFirstUsedAt(level)).toEqual([]);
     }
   });
@@ -213,12 +246,12 @@ describe('level and daily puzzles', () => {
   it('keeps level layouts stable across releases', () => {
     expect(createLevelPuzzle(1).tubes).toEqual([[1, 0, 1, 2], [0, 2, 1, 2], [1, 0, 0, 2], [], []]);
     expect(createLevelPuzzle(16).tubes).toEqual(PINNED_LEVEL_16);
-    expect(createLevelPuzzle(261).tubes).toEqual(PINNED_LEVEL_261);
+    expect(createLevelPuzzle(321).tubes).toEqual(PINNED_LEVEL_321);
   });
 
   it('deals every level with its settings, and every level can be solved', () => {
-    // Every stage level and the first few blocks of master levels.
-    for (let level = 1; level <= STAGE_LEVEL_COUNT + 40; level++) {
+    // Every level of the game.
+    for (let level = 1; level <= LEVEL_COUNT; level++) {
       const { tubes, board } = createLevelPuzzle(level);
       const settings = levelSettings(level);
       const { colorCount, emptyTubeCount, halfTubeCount, capacity } = settings;

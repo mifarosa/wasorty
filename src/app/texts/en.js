@@ -11,7 +11,8 @@ const stageNames = {
   locked: 'Locked Tube',
   half: 'Half Tube',
   oil: 'Oil',
-  master: 'Mixed'
+  master: 'Mixed',
+  giant: 'Giant'
 };
 const stageRules = {
   easy: 'Plain tubes',
@@ -22,7 +23,8 @@ const stageRules = {
   locked: 'Icy tube with a key color',
   half: 'Half tube of 2 units',
   oil: 'Oil that always floats on top',
-  master: '3–4 mixed rules in every level'
+  master: '3–4 mixed rules in every level',
+  giant: 'Boards of 12–16 colors'
 };
 const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
 const moves = (count) => plural(count, 'move', 'moves');

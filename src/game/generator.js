@@ -65,7 +65,10 @@ export function generatePuzzle(seed, shape) {
     const board = createBoard(shape, oilColors, locks);
     if (oilColors.length > 0) floatOil(tubes, board);
 
-    if (!tubes.some(startsTooEasy) && solve(tubes, { board })) return { tubes, board };
+    // A board of many colors has a search budget of its own: a deal the search cannot solve in
+    // that many steps is passed over, and the next one is tried, so dealing stays quick.
+    const search = shape.dealNodes ? { board, maxNodes: shape.dealNodes } : { board };
+    if (!tubes.some(startsTooEasy) && solve(tubes, search)) return { tubes, board };
   }
   return null;
 }

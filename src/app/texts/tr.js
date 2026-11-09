@@ -11,7 +11,8 @@ const stageNames = {
   locked: 'Kilitli Tüp',
   half: 'Yarım Tüp',
   oil: 'Yağ',
-  master: 'Karışık'
+  master: 'Karışık',
+  giant: 'Dev'
 };
 const stageRules = {
   easy: 'Düz tüpler',
@@ -22,7 +23,8 @@ const stageRules = {
   locked: 'Anahtar renkli buzlu tüp',
   half: '2 birimlik yarım tüp',
   oil: 'Hep üstte duran yağ',
-  master: 'Her seviyede 3–4 karışık kural'
+  master: 'Her seviyede 3–4 karışık kural',
+  giant: '12–16 renkli dev tahtalar'
 };
 const moves = (count) => `${count} hamle`;
 /** Seconds as m:ss, or h:mm:ss past an hour. */

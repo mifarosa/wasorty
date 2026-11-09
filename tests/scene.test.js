@@ -53,6 +53,15 @@ describe('arrangeTubes', () => {
   it('uses longer rows on wide screens', () => {
     expect(rowsOf(arrangeTubes(12, 1.8)).map((row) => row.length)).toEqual([6, 6]);
   });
+
+  it('gives a board of many tubes longer rows, so three rows are enough on a phone', () => {
+    const lengths = (count) => rowsOf(arrangeTubes(count, 0.65)).map((row) => row.length);
+    expect(lengths(12)).toEqual([4, 4, 4]);
+    expect(lengths(14)).toEqual([5, 5, 4]);
+    expect(lengths(16)).toEqual([6, 6, 4]);
+    expect(lengths(18)).toEqual([6, 6, 6]);
+    expect(lengths(20)).toEqual([7, 7, 6]);
+  });
 });
 
 describe('fitToView', () => {
