@@ -130,6 +130,14 @@ export class TubeScene {
     this.#requestRender();
   }
 
+  /**
+   * Draws the board once more as it is. A board that sits still is drawn once and not again, so
+   * a host whose screen may not have shown that one frame can ask for another.
+   */
+  redraw() {
+    this.#requestRender();
+  }
+
   /** Shows new contents at once, without animation, e.g. after an undo or a restart. */
   showContents(tubes) {
     this.#cancelPours();

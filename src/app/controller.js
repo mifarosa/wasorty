@@ -120,6 +120,8 @@ export class GameController {
   #animating = false;
   /** Whether the puzzle on the board got its extra tube (one to a puzzle). */
   #extraTube = false;
+  /** Pending extra frames after a puzzle was put on the board (see #showBoard). */
+  #redrawTimers = [];
 
   /**
    * @param {object} deps
@@ -211,7 +213,11 @@ export class GameController {
    * Works out the fewest moves of the new puzzle in the background. A puzzle replaced
    * meanwhile drops its answer.
    */
-  /** Puts the board of the session on the scene, as it is now. */
+  /**
+   * Puts the board of the session on the scene, as it is now. The new board is drawn once; on a
+   * phone that single frame did not always reach the screen before the player touched it, so two
+   * more frames follow shortly after.
+   */
   #showBoard() {
     const { board, tubes } = this.#session;
     this.#scene.showPuzzle(this.#session.visibleTubes, {
@@ -223,6 +229,9 @@ export class GameController {
         fills: board.cracked.get(index) ?? null
       }))
     });
+    this.#scene.redraw?.();
+    for (const timer of this.#redrawTimers) clearTimeout(timer);
+    this.#redrawTimers = [100, 350].map((delay) => setTimeout(() => this.#scene.redraw?.(), delay));
   }
 
   #watchFewestMoves() {

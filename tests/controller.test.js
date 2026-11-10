@@ -860,7 +860,7 @@ describe('GameController', () => {
     it('spends spare undos once the level runs out, and shows them on the button', async () => {
       const controller = createController({ solved: 20, current: 16, spareUndos: 2 });
       expect(lastRender()).toMatchObject({
-        undoCount: '4+2',
+        undoCount: '6',
         undoLabel: 'Geri al: bu seviyede 4 hak, 2 ekstra geri alma'
       });
       for (let i = 0; i < 4; i++) {
@@ -874,11 +874,11 @@ describe('GameController', () => {
       controller.undo();
       expect(saved.at(-1).spareUndos).toBe(1);
       expect(hud.showToast).toHaveBeenLastCalledWith('Ekstra geri alma kullandın; 1 kaldı.');
-      expect(lastRender()).toMatchObject({ undoCount: '0+1', subtitle: 'Tek Yönlü · 0 hamle' });
+      expect(lastRender()).toMatchObject({ undoCount: '1', subtitle: 'Tek Yönlü · 0 hamle' });
 
       // A restart gives the level's undos back, but not the spare one.
       controller.restart();
-      expect(lastRender().undoCount).toBe('4+1');
+      expect(lastRender().undoCount).toBe('5');
     });
 
     it('explains the limit where it starts and where it tightens', () => {

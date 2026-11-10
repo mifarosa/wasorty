@@ -134,7 +134,8 @@ export const en = {
   // The toolbar
   /** The undos left on the undo button: none for no limit, spare ones after a plus. */
   undoCount: (undosLeft, spareUndos) =>
-    undosLeft === null ? null : spareUndos > 0 ? `${undosLeft}+${spareUndos}` : `${undosLeft}`,
+    // One number: the undos left in the level and the spare ones come to what can be taken back.
+    undosLeft === null ? null : String(undosLeft + spareUndos),
   undoLabel: (undosLeft, spareUndos) =>
     undosLeft === null
       ? 'Undo'
