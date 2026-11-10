@@ -33,8 +33,24 @@ function fontFor(size, bold) {
 export function NativeBoard({ onScene }) {
   const [picture, setPicture] = useState(null);
   const size = useRef({ width: 0, height: 0 });
+  const scene = useRef(null);
   const host = useMemo(() => {
     const resizeCallbacks = [];
+    // A still board is drawn once, and that last frame can fail to reach the screen. So when
+    // frames stop coming, one more is drawn (that one does not start another round).
+    let settleTimer = null;
+    let settling = false;
+    const settle = () => {
+      if (settling) {
+        settling = false;
+        return;
+      }
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => {
+        settling = true;
+        scene.current?.redraw();
+      }, 150);
+    };
     const element = {
       clientWidth: 0,
       clientHeight: 0,
@@ -44,7 +60,10 @@ export function NativeBoard({ onScene }) {
       getContext: () =>
         new SkiaContext2D(Skia, {
           size: () => size.current,
-          onPicture: setPicture,
+          onPicture: (next) => {
+            setPicture(next);
+            settle();
+          },
           fontFor
         }),
       addEventListener: (type, listener) => {
@@ -70,14 +89,14 @@ export function NativeBoard({ onScene }) {
     return element;
   }, []);
 
-  const scene = useRef(null);
-
   return (
     <View
       style={{ flex: 1 }}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
         host.resize(width, height);
+        // A new size moves the tubes; draw them again once the layout has settled.
+        for (const delay of [0, 120]) setTimeout(() => scene.current?.redraw(), delay);
         // The scene needs a size to lay the tubes out, so it starts with the first one.
         if (!scene.current && width > 0 && height > 0) {
           scene.current = new TubeScene(host);
