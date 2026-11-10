@@ -90,3 +90,26 @@ Ayrı ayrı yapmak istersen: `npx eas-cli build -p ios --profile production`, so
 (10–30 dakika, e-posta gelir); sonra TestFlight'ta yeni sürümü kurarsın.
 
 Şifreleme (export compliance) sorusu çıkmaz: `app.json` → `ITSAppUsesNonExemptEncryption` `false`.
+
+## Build'i GitHub'da almak (EAS bulut kotasını harcamaz)
+
+`.github/workflows/ios-build.yml`, iOS build'ini GitHub'ın macOS makinesinde `eas build --local` ile
+alır. İmza sertifikaları ve provisioning profile EAS'ta durur (ayrı `.p12` ya da `.mobileprovision`
+gerekmez); build'in kendisi GitHub'da çalıştığı için EAS'ın aylık build hakkından düşmez. Depo herkese
+açık olduğu için macOS dakikaları ücretsizdir. Bir build 30–60 dakika sürer.
+
+Bir kerelik kurulum:
+
+1. **Expo erişim anahtarı:** expo.dev → hesabın → _Access tokens_ → _Create token_. Anahtarı kopyala.
+2. **GitHub gizli değişkeni:** depo → _Settings → Secrets and variables → Actions → New repository
+   secret_; adı `EXPO_TOKEN`, değeri o anahtar. (Anahtarı kimseye gönderme, koda yazma.)
+3. **TestFlight'a otomatik yükleme için** (istersen): App Store Connect API anahtarını EAS'a bir kez
+   tanıt: `npx eas-cli credentials -p ios` → _App Store Connect: Manage your API Key_. Bunu yapmadan
+   build alınır, yükleme elle yapılır.
+
+Çalıştırma: GitHub → _Actions → iOS build → Run workflow_ (isteğe bağlı _submit_ kutusu: build
+bitince TestFlight'a yükler). Build edilen `.ipa` bir gün boyunca iş akışının sonunda indirilebilir;
+elle yüklemek için: `npx eas-cli submit -p ios --path wasorty.ipa`.
+
+Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona doğrudan kurulan
+**development build**'in kurulum linkini yalnızca EAS bulutu verir, onu GitHub'da alamazsın.
