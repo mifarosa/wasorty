@@ -34,7 +34,7 @@ export function LeaderboardScreen({ view, account, colors, onSignIn, onPlayDaily
 }
 
 function Content({ view, account, colors, onSignIn, onPlayDaily }) {
-  const { online, today, streak, history, top, rank, failed } = view;
+  const { online, today, streak, history, top, rank, failed, shareError } = view;
   const { signedIn, username } = account;
   return (
     <>
@@ -72,7 +72,10 @@ function Content({ view, account, colors, onSignIn, onPlayDaily }) {
               />
             </Block>
           ) : today && !today.shared && today.score !== undefined ? (
-            <Text style={{ color: colors.muted }}>{texts.leaderboardSending}</Text>
+            <Text style={{ color: colors.muted }}>
+              {texts.leaderboardSending}
+              {shareError ? ` (${shareError})` : ''}
+            </Text>
           ) : null}
 
           <Heading colors={colors}>{texts.leaderboardTop}</Heading>

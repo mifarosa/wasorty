@@ -56,7 +56,20 @@ describe('daily store', () => {
       }
     ]);
     expect(writes[1][0]).toBe('dailyMoves/2026-10-12_u1');
-    expect(writes[1][1]).toMatchObject({ moves: [[0, 1]], hints: 0 });
+    expect(writes[1][1]).toMatchObject({ moves: [1], hints: 0 });
+  });
+
+  it('writes the moves as a flat list, since Firestore takes no arrays inside arrays', async () => {
+    const { load, writes } = fakeLoad({});
+    await createDailyStore({ load }).submit({
+      ...entry,
+      log: [
+        [3, 12],
+        [0, 1]
+      ]
+    });
+    expect(writes[1][1].moves).toEqual([312, 1]);
+    expect(writes[1][1].moves.every(Number.isInteger)).toBe(true);
   });
 
   it('sends nothing when the score is there already, and needs a signed in player', async () => {

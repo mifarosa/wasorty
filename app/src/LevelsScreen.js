@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { words } from './appTexts.js';
 import { CHAPTER_COLORS } from './theme.js';
@@ -31,12 +31,22 @@ export function LevelsScreen({
   const tap = useTap();
   const { width } = useWindowDimensions();
   const cell = Math.floor((width - SIDE * 2) / COLUMNS);
-  const scroll = useRef(null);
-  const scrolled = useRef(false);
+  // An accordion: the chapter being played is open, the rest are shut until tapped. Shut
+  // chapters draw no tubes, which also keeps the list light (400 tubes at once stuttered).
+  const playing = model.chapters.find((chapter) => chapter.levels.some((level) => level.playing));
+  const [open, setOpen] = useState(playing?.id ?? model.chapters[0]?.id ?? null);
+
+  const pickLevel = useCallback(
+    (level) => {
+      tap();
+      onPickLevel(level);
+    },
+    [tap, onPickLevel]
+  );
 
   return (
     <Sheet title={words.levels} colors={colors} onClose={onClose}>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: SIDE, gap: 22 }}>
+      <ScrollView contentContainerStyle={{ padding: SIDE, gap: 18 }}>
         <DailyTicket
           daily={model.daily}
           colors={colors}
@@ -49,25 +59,18 @@ export function LevelsScreen({
           <Button label={words.leaderboard} onPress={onLeaderboard} colors={colors} />
         ) : null}
         {model.chapters.map((chapter) => (
-          <View
+          <Rack
             key={chapter.id}
-            onLayout={(event) => {
-              // Opens on the chapter of the level being played.
-              if (scrolled.current || !chapter.levels.some((level) => level.playing)) return;
-              scrolled.current = true;
-              scroll.current?.scrollTo({ y: Math.max(0, event.nativeEvent.layout.y - 12) });
+            chapter={chapter}
+            colors={colors}
+            cell={cell}
+            expanded={open === chapter.id}
+            onToggle={() => {
+              tap();
+              setOpen((current) => (current === chapter.id ? null : chapter.id));
             }}
-          >
-            <Rack
-              chapter={chapter}
-              colors={colors}
-              cell={cell}
-              onPickLevel={(level) => {
-                tap();
-                onPickLevel(level);
-              }}
-            />
-          </View>
+            onPickLevel={pickLevel}
+          />
         ))}
       </ScrollView>
     </Sheet>
@@ -105,7 +108,7 @@ function DailyTicket({ daily, colors, onPress }) {
 }
 
 /** A chapter: its name and progress, then its levels as tubes, six to a shelf. */
-function Rack({ chapter, colors, cell, onPickLevel }) {
+const Rack = memo(function Rack({ chapter, colors, cell, expanded, onToggle, onPickLevel }) {
   const color = CHAPTER_COLORS[chapter.id] ?? colors.accent;
   const rows = [];
   for (let i = 0; i < chapter.levels.length; i += COLUMNS) {
@@ -113,7 +116,12 @@ function Rack({ chapter, colors, cell, onPickLevel }) {
   }
   return (
     <View style={{ gap: 6 }}>
-      <View style={styles.header}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        style={styles.header}
+      >
         <View style={[styles.drop, { backgroundColor: color }]} />
         <Text style={[styles.name, { color: colors.ink }]} numberOfLines={1}>
           {chapter.name}
@@ -132,9 +140,12 @@ function Rack({ chapter, colors, cell, onPickLevel }) {
           ))}
         </View>
         <Text style={[styles.progress, { color: colors.muted }]}>{chapter.progress}</Text>
-      </View>
-      <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 6 }}>{chapter.detail}</Text>
-      {rows.map((row, index) => (
+        <Text style={{ color: colors.muted, fontSize: 12 }}>{expanded ? '▲' : '▼'}</Text>
+      </Pressable>
+      {expanded ? (
+        <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 6 }}>{chapter.detail}</Text>
+      ) : null}
+      {(expanded ? rows : []).map((row, index) => (
         <View key={index} style={{ flexDirection: 'row', marginBottom: 6 }}>
           {row.map((level) => (
             <Tube
@@ -150,7 +161,7 @@ function Rack({ chapter, colors, cell, onPickLevel }) {
       ))}
     </View>
   );
-}
+});
 
 /** One level: a tube standing on its piece of the shelf, with its number underneath. */
 function Tube({ level, color, colors, cell, onPress }) {
