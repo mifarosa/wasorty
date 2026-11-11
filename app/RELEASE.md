@@ -113,3 +113,14 @@ elle yüklemek için: `npx eas-cli submit -p ios --path wasorty.ipa`.
 
 Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona doğrudan kurulan
 **development build**'in kurulum linkini yalnızca EAS bulutu verir, onu GitHub'da alamazsın.
+
+## Ses ve müzik
+
+- Sesler `app/assets/sounds` altında; hiçbiri hazır örnek değil, `node scripts/makeSounds.mjs` ile
+  sentezlenir (müzik için `ffmpeg` gerekir; çıktı repoda durur, yeniden üretmek şart değil).
+- Paket `expo-audio` (native): yeni build gerekir, `runtimeVersion` `1.3.0`. `expo-asset` ve
+  `expo-constants` onunla birlikte Expo'nun SDK 58 tablosundaki sürüme sabitlendi
+  (`tests/nativeVersions.test.js` kontrol eder).
+- Ayarlarda _Ses efektleri_ ve _Müzik_ ayrı anahtarlar; telefon sessizdeyse ses çıkmaz, oyuncunun
+  kendi müziğiyle birlikte çalar (`mixWithOthers`). Uygulama arka plana geçince müzik durur.
+- Build'de ses paketi yoksa (eski bir development build) oyun sessiz çalışır, hata vermez.

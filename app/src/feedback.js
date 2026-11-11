@@ -19,12 +19,17 @@ function run(call) {
  * nothing.
  *
  * @param {() => boolean} enabled whether the player wants vibration (the setting)
- * @param {{ onWin?: () => void }} [hooks] onWin: the puzzle was solved (the confetti)
+ * @param {{ onWin?: () => void, sound?: { play: (name: string, options?: object) => void } | null }}
+ *   [hooks] onWin: the puzzle was solved (the confetti); sound: plays the sounds, which have
+ *   their own setting
  */
-export function createFeedback(enabled, { onWin = () => {} } = {}) {
-  const when = (action) => () => {
-    if (enabled()) run(action);
-  };
+export function createFeedback(enabled, { onWin = () => {}, sound = null } = {}) {
+  const when =
+    (action, name = null) =>
+    () => {
+      if (name) sound?.play(name);
+      if (enabled()) run(action);
+    };
   const later = (ms, action) =>
     setTimeout(() => {
       if (enabled()) run(action);
@@ -32,14 +37,15 @@ export function createFeedback(enabled, { onWin = () => {} } = {}) {
 
   return {
     /** A tap on a button or a tile of the app. */
-    tap: when(() => Haptics.selectionAsync()),
-    pick: when(() => Haptics.impactAsync(Impact.Light)),
-    putDown: when(() => Haptics.impactAsync(Impact.Soft)),
-    reject: when(() => Haptics.notificationAsync(Notice.Warning)),
-    undo: when(() => Haptics.impactAsync(Impact.Light)),
-    hint: when(() => Haptics.impactAsync(Impact.Light)),
+    tap: when(() => Haptics.selectionAsync(), 'tap'),
+    pick: when(() => Haptics.impactAsync(Impact.Light), 'pick'),
+    putDown: when(() => Haptics.impactAsync(Impact.Soft), 'putDown'),
+    reject: when(() => Haptics.notificationAsync(Notice.Warning), 'reject'),
+    undo: when(() => Haptics.impactAsync(Impact.Light), 'undo'),
+    hint: when(() => Haptics.impactAsync(Impact.Light), 'hint'),
     win() {
       onWin();
+      sound?.play('win');
       if (!enabled()) return;
       run(() => Haptics.notificationAsync(Notice.Success));
       // A little roll while the confetti flies.
@@ -48,6 +54,17 @@ export function createFeedback(enabled, { onWin = () => {} } = {}) {
     },
     /** The scene's moments: liquid starting and landing, a cap, ice melting. */
     cue(cue) {
+      switch (cue.type) {
+        case 'flow':
+          sound?.play('pour', { stopAfter: cue.duration });
+          break;
+        case 'capOn':
+        case 'capOff':
+        case 'melt':
+          sound?.play(cue.type);
+          break;
+        default:
+      }
       if (!enabled()) return;
       switch (cue.type) {
         case 'flow':

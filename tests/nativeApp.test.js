@@ -80,6 +80,8 @@ describe('the language of the app', () => {
         'tube',
         'theme',
         'language',
+        'sound',
+        'music',
         'haptics',
         'symbols',
         'symbolsNote'
