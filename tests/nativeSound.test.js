@@ -16,6 +16,15 @@ const NAMES = [
   'win'
 ];
 
+const make = (fake, { soundOn = true, musicOn = true } = {}) =>
+  createSound({
+    load: () => fake,
+    soundOn: typeof soundOn === 'function' ? soundOn : () => soundOn,
+    musicOn: typeof musicOn === 'function' ? musicOn : () => musicOn
+  });
+
+const flush = () => new Promise((resolve) => queueMicrotask(() => queueMicrotask(resolve)));
+
 function fakeAudio() {
   const players = [];
   const audio = {
@@ -46,7 +55,7 @@ describe('the sounds of the app', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('loads nothing until the first sound, then plays an effect from its start', () => {
+  it('loads nothing until the first sound, then plays an effect from its start', async () => {
     const fake = fakeAudio();
     const load = vi.fn(() => fake);
     const sound = createSound({ load, soundOn: () => true, musicOn: () => true });
@@ -55,27 +64,33 @@ describe('the sounds of the app', () => {
     expect(fake.audio.setAudioModeAsync).toHaveBeenCalledWith(
       expect.objectContaining({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' })
     );
-    const pick = fake.byFile('pick');
+    const [pick, again] = fake.players.filter((player) => player.file === 'file:pick');
     expect(pick.seekTo).toHaveBeenCalledWith(0);
+    // It plays when the rewind is done, not before.
+    expect(pick.play).not.toHaveBeenCalled();
+    await flush();
     expect(pick.play).toHaveBeenCalledOnce();
+    // The next one goes to another player, so a sound that is still going is not cut.
     sound.play('pick');
+    await flush();
+    expect(again.play).toHaveBeenCalledOnce();
     expect(load).toHaveBeenCalledOnce();
-    expect(pick.play).toHaveBeenCalledTimes(2);
   });
 
   it('stays silent when the effects are off, and plays nothing it does not know', () => {
     const fake = fakeAudio();
-    const sound = createSound({ load: () => fake, soundOn: () => false, musicOn: () => true });
+    const sound = make(fake, { soundOn: false });
     sound.play('win');
     expect(fake.players).toHaveLength(0);
-    const on = createSound({ load: () => fake, soundOn: () => true, musicOn: () => true });
+    const on = make(fake);
     expect(() => on.play('nonsense')).not.toThrow();
   });
 
-  it('cuts a pour short when the pour is shorter than the sound', () => {
+  it('cuts a pour short when the pour is shorter than the sound', async () => {
     const fake = fakeAudio();
-    const sound = createSound({ load: () => fake, soundOn: () => true, musicOn: () => true });
+    const sound = make(fake);
     sound.play('pour', { stopAfter: 500 });
+    await flush();
     const pour = fake.byFile('pour');
     expect(pour.pause).not.toHaveBeenCalled();
     vi.advanceTimersByTime(500);
@@ -85,7 +100,7 @@ describe('the sounds of the app', () => {
   it('keeps the music looping, and starts and stops it with its setting', () => {
     const fake = fakeAudio();
     let music = true;
-    const sound = createSound({ load: () => fake, soundOn: () => true, musicOn: () => music });
+    const sound = make(fake, { musicOn: () => music });
     sound.refreshMusic();
     const track = fake.byFile('music');
     expect(track.loop).toBe(true);
@@ -99,7 +114,7 @@ describe('the sounds of the app', () => {
 
   it('does not play music when it is off from the start', () => {
     const fake = fakeAudio();
-    const sound = createSound({ load: () => fake, soundOn: () => true, musicOn: () => false });
+    const sound = make(fake, { musicOn: false });
     sound.refreshMusic();
     expect(fake.players).toHaveLength(0);
   });
@@ -129,14 +144,17 @@ describe('the sounds of the app', () => {
     }
   });
 
-  it('keeps going when a player fails to play', () => {
+  it('keeps going when a player fails to play', async () => {
     const fake = fakeAudio();
-    const sound = createSound({ load: () => fake, soundOn: () => true, musicOn: () => true });
+    const sound = make(fake);
     sound.play('tap');
-    fake.byFile('tap').play.mockImplementation(() => {
-      throw new Error('audio session');
-    });
+    for (const player of fake.players) {
+      player.play.mockImplementation(() => {
+        throw new Error('audio session');
+      });
+    }
     expect(() => sound.play('tap')).not.toThrow();
+    await flush();
   });
 });
 

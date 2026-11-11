@@ -8,23 +8,12 @@
 // are tiny). The output is committed, so ffmpeg is only needed to make the files again.
 import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
+import { createRandom } from '../src/game/random.js';
 import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 
 const OUT = new URL('../app/assets/sounds/', import.meta.url).pathname;
 const RATE = 32000;
 const TAU = Math.PI * 2;
-
-/** A small deterministic random generator, so the files come out the same every time. */
-function random(seed) {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const buffer = (seconds) => new Float32Array(Math.ceil(seconds * RATE));
 
@@ -52,7 +41,7 @@ function chirp(out, start, from, to, duration, volume, type = 'sine') {
 
 /** Noise through a band-pass (or high-pass) filter, with a volume that follows `shape(t)`. */
 function noise(out, start, duration, shape, { type = 'band', from, to, q = 1.4, seed = 1 }) {
-  const rand = random(seed);
+  const rand = createRandom(seed);
   const first = Math.floor(start * RATE);
   const count = Math.floor(duration * RATE);
   let low = 0;
@@ -116,26 +105,24 @@ const effects = {
     chirp(out, 0.07, 160, 110, 0.12, 0.4, 'triangle');
     return out;
   },
-  // A second of running water: pours are cut short when they are shorter than that.
+  // A second of water running into a tube: soft bubbles that rise in pitch as it fills, with no
+  // noise in it (noise sounded like a hiss). Pours shorter than the sound are cut short.
   pour() {
-    const out = buffer(1.2);
-    const rand = random(7);
-    noise(
-      out,
-      0,
-      1.2,
-      (t, d) => 0.5 * envelope(t, d, 0.05) ** 0.5 * (0.8 + 0.2 * Math.sin(t * 88)),
-      {
-        from: 700,
-        to: 1300,
-        seed: 3
-      }
-    );
-    for (let i = 0; i < 14; i++) {
-      const t = (i + rand() * 0.8) / 14;
-      const pitch = 320 + 520 * t + rand() * 60;
-      chirp(out, t * 1.1, pitch, pitch * 1.6, 0.06, 0.18);
+    const out = buffer(1.3);
+    const rand = createRandom(7);
+    let at = 0;
+    while (at < 1.1) {
+      const fill = at / 1.1;
+      const pitch = (300 + 420 * fill) * (0.9 + rand() * 0.25);
+      const length = 0.07 + rand() * 0.04;
+      const volume = 0.16 + rand() * 0.1;
+      // A bubble pops upward in pitch, with a quiet overtone.
+      chirp(out, at, pitch, pitch * 1.7, length, volume);
+      chirp(out, at, pitch * 2, pitch * 3.1, length * 0.7, volume * 0.2);
+      at += 0.035 + rand() * 0.07;
     }
+    // A low, warm swell under the bubbles, like the weight of the liquid.
+    chirp(out, 0, 150, 190, 1.2, 0.1);
     return out;
   },
   capOn() {
@@ -204,7 +191,7 @@ function music() {
   const scale = [440, 493.88, 523.25, 587.33, 659.25, 783.99, 880, 987.77];
   const loop = chords.length * seconds;
   const out = buffer(loop + 6); // The tails run past the end and are folded back to the start.
-  const rand = random(2026);
+  const rand = createRandom(2026);
 
   chords.forEach((notes, index) => {
     const start = index * seconds;

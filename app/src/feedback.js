@@ -1,16 +1,13 @@
 import * as Haptics from 'expo-haptics';
+import { safely } from './safely.js';
 
 const { ImpactFeedbackStyle: Impact, NotificationFeedbackType: Notice } = Haptics;
 
 /** Runs a haptic call; a phone that cannot do it must never break the game. */
-function run(call) {
-  try {
-    const result = call();
-    if (result && typeof result.catch === 'function') result.catch(() => {});
-  } catch {
-    // No vibration is better than an error in the middle of a move.
-  }
-}
+const run = safely;
+
+/** The cues of the scene that have a sound of their own name (a pour is handled apart). */
+const CUE_SOUNDS = new Set(['capOn', 'capOff', 'melt']);
 
 /**
  * The feel of the game on a phone. Small taps for what the player does (lifting a tube, a
@@ -24,12 +21,10 @@ function run(call) {
  *   their own setting
  */
 export function createFeedback(enabled, { onWin = () => {}, sound = null } = {}) {
-  const when =
-    (action, name = null) =>
-    () => {
-      if (name) sound?.play(name);
-      if (enabled()) run(action);
-    };
+  const when = (action, name) => () => {
+    sound?.play(name);
+    if (enabled()) run(action);
+  };
   const later = (ms, action) =>
     setTimeout(() => {
       if (enabled()) run(action);
@@ -54,17 +49,8 @@ export function createFeedback(enabled, { onWin = () => {}, sound = null } = {})
     },
     /** The scene's moments: liquid starting and landing, a cap, ice melting. */
     cue(cue) {
-      switch (cue.type) {
-        case 'flow':
-          sound?.play('pour', { stopAfter: cue.duration });
-          break;
-        case 'capOn':
-        case 'capOff':
-        case 'melt':
-          sound?.play(cue.type);
-          break;
-        default:
-      }
+      if (cue.type === 'flow') sound?.play('pour', { stopAfter: cue.duration });
+      else if (CUE_SOUNDS.has(cue.type)) sound?.play(cue.type);
       if (!enabled()) return;
       switch (cue.type) {
         case 'flow':

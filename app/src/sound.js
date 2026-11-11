@@ -1,3 +1,5 @@
+import { safely } from './safely.js';
+
 /** How loud each effect is next to the others (0 to 1); the files are all at the same level. */
 const VOLUMES = {
   tap: 0.35,
@@ -13,11 +15,14 @@ const VOLUMES = {
   win: 0.9
 };
 const MUSIC_VOLUME = 0.3;
+/** Players per effect, taken in turn: one that is still playing (or still rewinding) is not reused. */
+const POOL = 2;
 
 /**
- * The sounds and the music of the app, played from files with expo-audio. It speaks the same
- * names as the website's sounds (src/app/sound.js). Nothing is loaded until the first sound,
- * and a phone or a build that cannot play audio stays silent instead of failing.
+ * The sounds and the music of the app, played from files with expo-audio. It uses the same names
+ * as the website's sounds (src/app/sound.js). Nothing is loaded until it is needed (an effect's
+ * players on its first play, the music when it is on), and a phone or a build that cannot play
+ * audio stays silent instead of failing.
  *
  * @param {object} options
  * @param {() => ({ audio: object, files: Record<string, unknown> } | null)} options.load
@@ -25,47 +30,50 @@ const MUSIC_VOLUME = 0.3;
  * @param {() => boolean} options.musicOn the setting for the music
  */
 export function createSound({ load, soundOn, musicOn }) {
-  let ready = null;
+  // undefined until the first use, then the audio package, or null if this build has none
+  let audio;
+  let files = null;
   let music = null;
-  const timers = new Map();
+  const pools = new Map();
 
-  function setup() {
-    if (ready !== null) return ready;
-    ready = false;
-    try {
+  function start() {
+    if (audio !== undefined) return audio;
+    audio = null;
+    safely(() => {
       const sdk = load();
-      if (!sdk?.audio) return ready;
-      const { audio, files } = sdk;
+      if (!sdk?.audio) return;
       // Plays alongside the player's own music, and not when the phone is on silent.
-      audio
-        .setAudioModeAsync({
+      safely(() =>
+        sdk.audio.setAudioModeAsync({
           playsInSilentMode: false,
           interruptionMode: 'mixWithOthers',
           shouldPlayInBackground: false
         })
-        ?.catch?.(() => {});
-      const players = {};
-      for (const name of Object.keys(VOLUMES)) {
-        players[name] = audio.createAudioPlayer(files[name]);
-        players[name].volume = VOLUMES[name];
-      }
-      music = audio.createAudioPlayer(files.music);
-      music.loop = true;
-      music.volume = MUSIC_VOLUME;
-      ready = players;
-    } catch {
-      ready = false;
-    }
-    return ready;
+      );
+      files = sdk.files;
+      audio = sdk.audio;
+    });
+    return audio;
   }
 
-  function guard(call) {
-    try {
-      const result = call();
-      if (result && typeof result.catch === 'function') result.catch(() => {});
-    } catch {
-      // No sound is better than an error in the middle of a move.
+  function poolOf(name) {
+    if (!pools.has(name)) {
+      let pool = null;
+      safely(() => {
+        const players = Array.from({ length: POOL }, () => {
+          const player = audio.createAudioPlayer(files[name]);
+          player.volume = VOLUMES[name];
+          return player;
+        });
+        pool = { players, next: 0, timers: [] };
+      });
+      pools.set(name, pool);
     }
+    return pools.get(name);
+  }
+
+  function pauseMusic() {
+    if (music) safely(() => music.pause());
   }
 
   return {
@@ -76,35 +84,46 @@ export function createSound({ load, soundOn, musicOn }) {
      *   a pour that is shorter than the sound
      */
     play(name, { stopAfter } = {}) {
-      if (!soundOn()) return;
-      const players = setup();
-      const player = players && players[name];
-      if (!player) return;
-      guard(() => {
-        clearTimeout(timers.get(name));
-        player.seekTo(0);
-        player.play();
-        if (stopAfter)
-          timers.set(
-            name,
-            setTimeout(() => guard(() => player.pause()), stopAfter)
-          );
-      });
+      if (!soundOn() || !(name in VOLUMES) || !start()) return;
+      const pool = poolOf(name);
+      if (!pool) return;
+
+      const index = pool.next;
+      pool.next = (index + 1) % pool.players.length;
+      const player = pool.players[index];
+      clearTimeout(pool.timers[index]);
+      // Play once the rewind is done: a play that comes first starts at the end, in silence.
+      safely(() =>
+        Promise.resolve(player.seekTo(0))
+          .catch(() => {})
+          .then(() => {
+            safely(() => player.play());
+            if (stopAfter) {
+              pool.timers[index] = setTimeout(() => safely(() => player.pause()), stopAfter);
+            }
+          })
+      );
     },
 
     /** Starts or stops the music to match the setting; call it when the setting changes. */
     refreshMusic() {
-      if (musicOn()) {
-        if (!setup()) return;
-        guard(() => music.play());
-      } else if (music) {
-        guard(() => music.pause());
+      if (!musicOn()) {
+        pauseMusic();
+        return;
       }
+      if (!start()) return;
+      if (!music) {
+        safely(() => {
+          const player = audio.createAudioPlayer(files.music);
+          player.loop = true;
+          player.volume = MUSIC_VOLUME;
+          music = player;
+        });
+      }
+      if (music) safely(() => music.play());
     },
 
     /** Pauses the music, e.g. while the app is in the background. */
-    pauseMusic() {
-      if (music) guard(() => music.pause());
-    }
+    pauseMusic
   };
 }
