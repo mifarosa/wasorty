@@ -13,6 +13,8 @@ const VOLUMES = {
   win: 0.9
 };
 const MUSIC_VOLUME = 0.3;
+/** Players per effect, taken in turn: one that is still playing (or still rewinding) is not reused. */
+const POOL = 3;
 
 /**
  * The sounds and the music of the app, played from files with expo-audio. It speaks the same
@@ -46,8 +48,12 @@ export function createSound({ load, soundOn, musicOn }) {
         ?.catch?.(() => {});
       const players = {};
       for (const name of Object.keys(VOLUMES)) {
-        players[name] = audio.createAudioPlayer(files[name]);
-        players[name].volume = VOLUMES[name];
+        players[name] = { next: 0, all: [] };
+        for (let i = 0; i < POOL; i++) {
+          const player = audio.createAudioPlayer(files[name]);
+          player.volume = VOLUMES[name];
+          players[name].all.push(player);
+        }
       }
       music = audio.createAudioPlayer(files.music);
       music.loop = true;
@@ -78,17 +84,24 @@ export function createSound({ load, soundOn, musicOn }) {
     play(name, { stopAfter } = {}) {
       if (!soundOn()) return;
       const players = setup();
-      const player = players && players[name];
-      if (!player) return;
+      const pool = players && players[name];
+      if (!pool) return;
+      // Each play goes to the next player, so one that is still playing is not cut off.
+      const player = pool.all[pool.next];
+      pool.next = (pool.next + 1) % pool.all.length;
       guard(() => {
-        clearTimeout(timers.get(name));
-        player.seekTo(0);
-        player.play();
-        if (stopAfter)
-          timers.set(
-            name,
-            setTimeout(() => guard(() => player.pause()), stopAfter)
-          );
+        clearTimeout(timers.get(player));
+        // Play once the rewind is done: a play that comes first starts at the end, in silence.
+        const rewound = Promise.resolve(player.seekTo(0)).catch(() => {});
+        rewound.then(() => {
+          guard(() => player.play());
+          if (stopAfter) {
+            timers.set(
+              player,
+              setTimeout(() => guard(() => player.pause()), stopAfter)
+            );
+          }
+        });
       });
     },
 
