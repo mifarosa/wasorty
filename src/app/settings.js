@@ -5,6 +5,7 @@
  * @typedef {object} Settings
  * @property {'classic' | 'neon' | 'cocktail'} theme
  * @property {boolean} sound
+ * @property {boolean} music the music of the app (the website has none)
  * @property {boolean} haptics vibration on phones that have it
  * @property {boolean} symbols a symbol on every color, for players who cannot tell colors apart
  * @property {'tr' | 'en'} language
@@ -19,6 +20,7 @@ export const THEME_IDS = Object.freeze(['classic', 'neon', 'cocktail']);
 export const DEFAULT_SETTINGS = Object.freeze({
   theme: 'classic',
   sound: true,
+  music: true,
   haptics: true,
   symbols: false,
   language: 'en'
@@ -30,6 +32,7 @@ export function normalizeSettings(saved) {
   return {
     theme: THEME_IDS.includes(data.theme) ? data.theme : DEFAULT_SETTINGS.theme,
     sound: typeof data.sound === 'boolean' ? data.sound : DEFAULT_SETTINGS.sound,
+    music: typeof data.music === 'boolean' ? data.music : DEFAULT_SETTINGS.music,
     haptics: typeof data.haptics === 'boolean' ? data.haptics : DEFAULT_SETTINGS.haptics,
     symbols: typeof data.symbols === 'boolean' ? data.symbols : DEFAULT_SETTINGS.symbols,
     language: LANGUAGES.includes(data.language) ? data.language : DEFAULT_SETTINGS.language

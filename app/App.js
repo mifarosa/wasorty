@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { AppState, Pressable, Share, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { DailyBoard } from '../src/app/dailyBoard.js';
@@ -30,6 +30,8 @@ import { words } from './src/appTexts.js';
 import { LETTERS } from './src/brand.js';
 import { deviceLocale } from './src/deviceLocale.js';
 import { createFeedback } from './src/feedback.js';
+import { createSound } from './src/sound.js';
+import { loadSoundSdk } from './src/soundSdk.js';
 import { chooseLanguage } from './src/language.js';
 import { storage } from './src/storage.js';
 import { colorsOf, lookOf, paletteOf } from './src/theme.js';
@@ -80,12 +82,22 @@ export default function App() {
   // What the game's callbacks read: always the latest settings and look.
   const latest = useRef({ settings, scheme });
   latest.current = { settings, scheme };
+  const sound = useMemo(
+    () =>
+      createSound({
+        load: loadSoundSdk,
+        soundOn: () => latest.current.settings.sound,
+        musicOn: () => latest.current.settings.music
+      }),
+    []
+  );
   const feedback = useMemo(
     () =>
       createFeedback(() => latest.current.settings.haptics, {
-        onWin: () => setBurst((count) => count + 1)
+        onWin: () => setBurst((count) => count + 1),
+        sound
       }),
-    []
+    [sound]
   );
   const confetti = useMemo(() => confettiColors(paletteOf(settings.theme)), [settings.theme]);
   // The sync is made after the daily board and the game, which it reads; they reach it here.
@@ -171,6 +183,18 @@ export default function App() {
   useEffect(() => {
     scene.current?.setLook(lookOf(settings.theme, scheme, settings.symbols));
   }, [settings.theme, settings.symbols, scheme]);
+
+  // The music follows its setting, and rests while the app is in the background.
+  useEffect(() => {
+    sound.refreshMusic();
+  }, [sound, settings.music]);
+  useEffect(() => {
+    const watch = AppState.addEventListener('change', (status) => {
+      if (status === 'active') sound.refreshMusic();
+      else sound.pauseMusic();
+    });
+    return () => watch.remove();
+  }, [sound]);
 
   const changeSettings = useCallback((change) => {
     const next = { ...latest.current.settings, ...change };

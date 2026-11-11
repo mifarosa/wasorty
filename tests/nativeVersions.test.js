@@ -10,6 +10,9 @@ import { describe, expect, it } from 'vitest';
 const SDK_58 = {
   '@shopify/react-native-skia': '2.14.0',
   'expo-apple-authentication': '58.0.2',
+  'expo-asset': '58.0.18',
+  'expo-audio': '58.0.10',
+  'expo-constants': '58.0.13',
   'expo-crypto': '58.0.7',
   'expo-dev-client': '58.0.15',
   'expo-font': '58.0.10',

@@ -66,6 +66,18 @@ export function SettingsScreen({ settings, colors, onChange, onClose, account })
 
         <Group colors={colors}>
           <Toggle
+            label={words.sound}
+            value={settings.sound}
+            colors={colors}
+            onChange={(sound) => onChange({ sound })}
+          />
+          <Toggle
+            label={words.music}
+            value={settings.music}
+            colors={colors}
+            onChange={(music) => onChange({ music })}
+          />
+          <Toggle
             label={words.haptics}
             value={settings.haptics}
             colors={colors}
