@@ -41,7 +41,8 @@ export function createDailyStore({ load }) {
       if (log) {
         batch.set(store.doc(db, 'dailyMoves', `${day}_${uid}`), {
           day,
-          moves: log,
+          // Firestore does not take arrays inside arrays: a move is one number, from * 100 + to.
+          moves: log.map(([from, to]) => from * 100 + to),
           hints,
           createdAt: store.serverTimestamp(),
           v: 2
