@@ -116,26 +116,24 @@ const effects = {
     chirp(out, 0.07, 160, 110, 0.12, 0.4, 'triangle');
     return out;
   },
-  // A second of running water: pours are cut short when they are shorter than that.
+  // A second of water running into a tube: soft bubbles that rise in pitch as it fills, with no
+  // noise in it (noise sounded like a hiss). Pours shorter than the sound are cut short.
   pour() {
-    const out = buffer(1.2);
+    const out = buffer(1.3);
     const rand = random(7);
-    noise(
-      out,
-      0,
-      1.2,
-      (t, d) => 0.5 * envelope(t, d, 0.05) ** 0.5 * (0.8 + 0.2 * Math.sin(t * 88)),
-      {
-        from: 700,
-        to: 1300,
-        seed: 3
-      }
-    );
-    for (let i = 0; i < 14; i++) {
-      const t = (i + rand() * 0.8) / 14;
-      const pitch = 320 + 520 * t + rand() * 60;
-      chirp(out, t * 1.1, pitch, pitch * 1.6, 0.06, 0.18);
+    let at = 0;
+    while (at < 1.1) {
+      const fill = at / 1.1;
+      const pitch = (300 + 420 * fill) * (0.9 + rand() * 0.25);
+      const length = 0.07 + rand() * 0.04;
+      const volume = 0.16 + rand() * 0.1;
+      // A bubble pops upward in pitch, with a quiet overtone.
+      chirp(out, at, pitch, pitch * 1.7, length, volume);
+      chirp(out, at, pitch * 2, pitch * 3.1, length * 0.7, volume * 0.2);
+      at += 0.035 + rand() * 0.07;
     }
+    // A low, warm swell under the bubbles, like the weight of the liquid.
+    chirp(out, 0, 150, 190, 1.2, 0.1);
     return out;
   },
   capOn() {
