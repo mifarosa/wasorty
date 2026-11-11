@@ -142,7 +142,8 @@ export class DailyBoard {
       history,
       top,
       rank,
-      failed
+      failed,
+      shareError: this.#shareError
     };
   }
 
@@ -155,6 +156,9 @@ export class DailyBoard {
       if (result && !result.shared) await this.#share(day);
     }
   }
+
+  /** Why the last try to share a result failed, or null. */
+  #shareError = null;
 
   async #share(day) {
     const { name, results } = this.#record;
@@ -172,9 +176,11 @@ export class DailyBoard {
         hints: result.hints ?? 0,
         log: result.log
       });
+      this.#shareError = null;
       this.#update(markShared(this.#record, day));
-    } catch {
-      // It waits on the device and is tried again later.
+    } catch (error) {
+      // It waits on the device and is tried again later; the reason is kept to be shown.
+      this.#shareError = String(error?.code ?? error?.message ?? error).slice(0, 80);
     }
   }
 
