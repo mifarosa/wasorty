@@ -124,3 +124,17 @@ Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona 
 - Ayarlarda _Ses efektleri_ ve _Müzik_ ayrı anahtarlar; telefon sessizdeyse ses çıkmaz, oyuncunun
   kendi müziğiyle birlikte çalar (`mixWithOthers`). Uygulama arka plana geçince müzik durur.
 - Build'de ses paketi yoksa (eski bir development build) oyun sessiz çalışır, hata vermez.
+
+## Android
+
+- **Deneme için APK:** GitHub → Actions → _Android build_ → Run workflow → `preview`. İş bitince
+  sayfanın altındaki _Artifacts_ bölümünden `wasorty-android-preview` zip'ini indir, içindeki
+  `wasorty.apk`'yi telefona kur (telefonda "bilinmeyen kaynaklardan yükleme" izni gerekir).
+  Play hesabı gerekmez.
+- **Anahtar (bir kerelik):** `cd app && npx eas-cli credentials -p android` → _Android_ →
+  _production_ (ya da _preview_) → _Keystore_ → _Set up a new keystore_. Anahtarı EAS saklar;
+  workflow `EXPO_TOKEN` ile onu alır. Aynı anahtar APK'yi sonradan güncellerken de kullanılır
+  (imza aynı kalır, uygulamayı silmene gerek olmaz).
+- **Google Play için:** profili `production` seç, çıkan `wasorty.aab`'yi Play Console'a elle yükle.
+- Google ile giriş Android'de için `google-services.json` ve SHA-1 gerektirir (henüz yapılmadı);
+  uygulama giriş yapmadan oynanır. AdMob'da Android kimliği hâlâ Google'ın test kimliği.
