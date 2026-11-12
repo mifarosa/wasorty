@@ -1,0 +1,61 @@
+name: Android build
+
+# Builds the Android app on a Linux runner of GitHub with `eas build --local`. EAS keeps the
+# signing key (keystore), so none is needed here; only the build itself runs on this machine, which
+# means it does not use the builds of the EAS cloud. The repository is public, so the minutes are
+# free.
+#
+# Run it by hand: Actions → Android build → Run workflow. Needs the secret EXPO_TOKEN and, once,
+# a keystore made with `npx eas-cli credentials -p android` (see app/RELEASE.md). Only people who
+# can write to the repository can run a workflow by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: preview = an APK to install on a phone; production = an AAB for Google Play
+        type: choice
+        options:
+          - preview
+          - production
+        default: preview
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Build
+        env:
+          EXTENSION: ${{ inputs.profile == 'production' && 'aab' || 'apk' }}
+        run: eas build --platform android --profile ${{ inputs.profile }} --local --non-interactive --output "$RUNNER_TEMP/wasorty.$EXTENSION"
+      # Kept for three days: download it from the page of the run (Artifacts).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasorty-android-${{ inputs.profile }}
+          path: ${{ runner.temp }}/wasorty.*
+          retention-days: 3
