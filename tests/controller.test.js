@@ -75,7 +75,8 @@ describe('GameController', () => {
       onEditPuzzle,
       onFinished,
       getDailySummary,
-      leaderboardOnline
+      leaderboardOnline,
+      previewLevels
     } = {}
   ) {
     const controller = new GameController({
@@ -93,6 +94,7 @@ describe('GameController', () => {
       onFinished,
       getDailySummary,
       leaderboardOnline,
+      previewLevels,
       progress: { ...INITIAL_PROGRESS, ...progress },
       saveProgress: (value) => saved.push(value),
       now: clock
@@ -822,6 +824,58 @@ describe('GameController', () => {
     expect(scene.showPuzzle).toHaveBeenLastCalledWith(...shownBoard(2));
     expect(tile(1).state).toBe('solved');
     expect(tile(2)).toMatchObject({ state: 'open', playing: true });
+  });
+
+  describe('levels opened for a look', () => {
+    const previewLevels = new Set([60, 400]);
+
+    it('opens only the levels it is given, without moving the player on', () => {
+      const controller = createController({ solved: 3, current: 4 }, { previewLevels });
+      controller.showLevels();
+      expect(tile(60).state).toBe('open');
+      expect(tile(400).state).toBe('open');
+      expect(tile(61).state).toBe('locked');
+
+      controller.playLevel(61);
+      expect(lastRender().title).toBe('Seviye 4');
+      controller.playLevel(60);
+      expect(lastRender().title).toBe('Seviye 60');
+      // The saved position is still where the player is.
+      expect(saved.at(-1)).toMatchObject({ solved: 3, current: 4 });
+    });
+
+    it('counts a solution for nothing, and goes back to the list after it', async () => {
+      const controller = createController({ solved: 3, current: 4 }, { previewLevels });
+      controller.playLevel(60);
+      await playSolution(controller, createLevelPuzzle(60));
+
+      expect(lastWin().continueLabel).toBe('Devam et');
+      expect(lastWin().attempts).toBeNull();
+      expect(lastWin().notes).toEqual([]);
+      expect(saved.at(-1)).toMatchObject({ solved: 3, current: 4 });
+      expect(saved.at(-1).records[60]).toBeUndefined();
+
+      menu.show.mockClear();
+      controller.continueAfterWin();
+      expect(lastRender().title).toBe('Seviye 4');
+      expect(menu.show).toHaveBeenCalledOnce();
+    });
+
+    it('does not end the game when the last level is only looked at', async () => {
+      const onFinished = vi.fn();
+      const controller = createController({ solved: 3, current: 4 }, { previewLevels, onFinished });
+      controller.playLevel(400);
+      await playSolution(controller, createLevelPuzzle(400));
+      controller.continueAfterWin();
+      expect(onFinished).not.toHaveBeenCalled();
+      expect(lastRender().title).toBe('Seviye 4');
+    });
+
+    it('has none by default', () => {
+      const controller = createController({ solved: 3, current: 4 });
+      controller.playLevel(60);
+      expect(lastRender().title).toBe('Seviye 4');
+    });
   });
 
   describe('limited undo', () => {
