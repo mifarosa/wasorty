@@ -138,3 +138,12 @@ Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona 
 - **Google Play için:** profili `production` seç, çıkan `wasorty.aab`'yi Play Console'a elle yükle.
 - Google ile giriş Android'de için `google-services.json` ve SHA-1 gerektirir (henüz yapılmadı);
   uygulama giriş yapmadan oynanır. AdMob'da Android kimliği hâlâ Google'ın test kimliği.
+
+## App Store'a gönderme
+
+- `app/src/adsConfig.js` → `ADS_LIVE = true`: gerçek reklam. Kendi hesabınla **gerçek reklamlara asla
+  dokunma**; denemek için `false` yapıp ayrı bir build al.
+- Gizlilik politikası: `public/privacy.html` → https://mifarosa.com/wasorty/privacy.html
+  (App Store Connect'te _Privacy Policy URL_ olarak bunu gir; Türkçe ve İngilizce aynı sayfada).
+- Sıra: PR merge → Actions → _iOS build_ → `submit` işaretli → App Store Connect'te build'i seç →
+  incelemeye gönder.
