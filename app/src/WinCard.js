@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { texts } from '../../src/app/texts.js';
+import { caps } from './caps.js';
 import { words } from './appTexts.js';
 import { Button, Dialog, Stars } from './ui.js';
 
@@ -39,7 +40,9 @@ export function WinCard({ win, colors, actions }) {
 
         {win.attempts && win.attempts.length > 0 ? (
           <View style={styles.attempts}>
-            <Text style={[styles.heading, { color: colors.accent }]}>{texts.attemptsTitle}</Text>
+            <Text style={[styles.heading, { color: colors.accent }]}>
+              {caps(texts.attemptsTitle)}
+            </Text>
             {win.attempts.map((attempt, index) => (
               <View key={index} style={styles.attempt}>
                 <Stars count={attempt.stars} colors={colors} size={13} />
@@ -87,7 +90,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textAlign: 'center'
   },
-  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6 },
   attempts: { alignSelf: 'stretch', gap: 4, alignItems: 'center', marginTop: 4 },
   attempt: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }

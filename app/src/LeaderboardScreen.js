@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { texts } from '../../src/app/texts.js';
+import { caps } from './caps.js';
 import { words } from './appTexts.js';
 import { Button, Sheet, Stars } from './ui.js';
 
@@ -170,12 +171,12 @@ function Block({ colors, children }) {
 }
 
 function Heading({ colors, children }) {
-  return <Text style={[styles.heading, { color: colors.accent }]}>{children}</Text>;
+  return <Text style={[styles.heading, { color: colors.accent }]}>{caps(children)}</Text>;
 }
 
 const styles = StyleSheet.create({
   block: { borderRadius: 14, borderWidth: 2, padding: 16, gap: 10, alignItems: 'flex-start' },
-  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

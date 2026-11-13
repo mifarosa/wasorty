@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LANGUAGES } from '../../src/app/i18n.js';
 import { AccountSection } from './AccountSection.js';
+import { caps } from './caps.js';
 import { words } from './appTexts.js';
 import { SITE_NAME, SITE_URL } from './brand.js';
 import { THEME_IDS, colorsOf, paletteOf } from './theme.js';
@@ -98,7 +99,9 @@ export function SettingsScreen({ settings, colors, onChange, onClose, account })
 function Group({ title, colors, children }) {
   return (
     <View style={{ gap: 8 }}>
-      {title ? <Text style={[styles.groupTitle, { color: colors.accent }]}>{title}</Text> : null}
+      {title ? (
+        <Text style={[styles.groupTitle, { color: colors.accent }]}>{caps(title)}</Text>
+      ) : null}
       {children}
     </View>
   );
@@ -205,7 +208,7 @@ function SiteButton({ colors }) {
 }
 
 const styles = StyleSheet.create({
-  groupTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  groupTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6 },
   choice: {
     flexDirection: 'row',
     alignItems: 'center',

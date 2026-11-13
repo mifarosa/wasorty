@@ -515,7 +515,7 @@ function ToolButton({ icon, color, label, count, disabled = false, styles, color
       />
       <Gloss radius={14} />
       <Icon name={icon} size={26} color={color} />
-      <Text style={styles.toolText} numberOfLines={1}>
+      <Text style={styles.toolText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {label}
       </Text>
       {count !== undefined && count !== null ? (

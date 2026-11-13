@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { texts } from '../../src/app/texts.js';
+import { caps } from './caps.js';
 import { Button, Dialog, Stars } from './ui.js';
 
 /**
@@ -71,7 +72,7 @@ export function RulesScreen({ model, colors, onClose }) {
 function Section({ heading, colors, children }) {
   return (
     <View style={{ gap: 6 }}>
-      <Text style={[styles.heading, { color: colors.accent }]}>{heading}</Text>
+      <Text style={[styles.heading, { color: colors.accent }]}>{caps(heading)}</Text>
       {children}
     </View>
   );
@@ -80,7 +81,7 @@ function Section({ heading, colors, children }) {
 const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', marginBottom: 10 },
   scroll: { flexGrow: 0 },
-  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  heading: { fontSize: 13, fontWeight: '800', letterSpacing: 0.6 },
   ruleName: { fontWeight: '800', fontSize: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actions: { alignItems: 'center', marginTop: 14 }

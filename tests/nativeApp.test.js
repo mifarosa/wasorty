@@ -8,6 +8,7 @@ import { texts } from '../src/app/texts.js';
 import { fewestMovesOfPuzzle } from '../src/game/puzzleFewest.js';
 import { words } from '../app/src/appTexts.js';
 import { chooseLanguage, gameLanguageOf, startingLanguage } from '../app/src/language.js';
+import { caps } from '../app/src/caps.js';
 import { NativeHud } from '../app/src/NativeHud.js';
 import { NativeMenu, NativeRules } from '../app/src/NativeDialogs.js';
 import { THEME_IDS, colorsOf, lookOf } from '../app/src/theme.js';
@@ -203,6 +204,25 @@ describe('the streak text', () => {
     expect(texts.dailyStreak(1)).toBe('🔥 1 day in a row');
     expect(texts.dailyStreak(3)).toBe('🔥 3 days in a row');
     expect(texts.dailyStreakNote(1)).toBe('🔥 1 day in a row!');
+    setLanguage(before);
+  });
+});
+
+describe('capital letters of the headings', () => {
+  it('keep the dots of the Turkish i, whatever the phone speaks', () => {
+    expect(caps('Dil', 'tr')).toBe('DİL');
+    expect(caps('Bugünün en iyileri', 'tr')).toBe('BUGÜNÜN EN İYİLERİ');
+    expect(caps('ışık', 'tr')).toBe('IŞIK');
+    expect(caps('Language', 'en')).toBe('LANGUAGE');
+    expect(caps('title i', 'en')).toBe('TITLE I');
+  });
+
+  it('follow the language of the game by default', () => {
+    const before = getLanguage();
+    setLanguage('tr');
+    expect(caps('dil')).toBe('DİL');
+    setLanguage('en');
+    expect(caps('dil')).toBe('DIL');
     setLanguage(before);
   });
 });
