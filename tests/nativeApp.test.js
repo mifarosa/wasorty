@@ -195,3 +195,14 @@ describe('the game on the app’s screens', () => {
     expect(rules.model.supplies.length).toBeGreaterThan(0);
   });
 });
+
+describe('the streak text', () => {
+  it('says "1 day", not "1 days"', () => {
+    const before = getLanguage();
+    setLanguage('en');
+    expect(texts.dailyStreak(1)).toBe('🔥 1 day in a row');
+    expect(texts.dailyStreak(3)).toBe('🔥 3 days in a row');
+    expect(texts.dailyStreakNote(1)).toBe('🔥 1 day in a row!');
+    setLanguage(before);
+  });
+});
