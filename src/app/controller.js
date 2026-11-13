@@ -120,6 +120,10 @@ export class GameController {
   #animating = false;
   /** Whether the puzzle on the board got its extra tube (one to a puzzle). */
   #extraTube = false;
+  /** A level opened for a look that is still locked (see previewLevels); never counts as solved. */
+  #previewLevel = null;
+  /** Levels beyond the ones the player has reached that can be played anyway, for trying. */
+  #previewLevels;
   /** Pending extra frames after a puzzle was put on the board (see #showBoard). */
   #redrawTimers = [];
 
@@ -145,6 +149,8 @@ export class GameController {
    *   takes a custom puzzle back to the editor after a test play
    * @param {import('./progress.js').Progress} deps.progress
    * @param {(progress: import('./progress.js').Progress) => void} deps.saveProgress
+   * @param {Set<number>} [deps.previewLevels] locked levels that can be opened for a look; a
+   *   solution of one counts for nothing (no stars, no progress)
    * @param {() => Date} [deps.now]
    */
   constructor({
@@ -162,6 +168,7 @@ export class GameController {
     onFinished = () => {},
     progress,
     saveProgress,
+    previewLevels = new Set(),
     now = () => new Date()
   }) {
     this.#scene = scene;
@@ -178,6 +185,7 @@ export class GameController {
     this.#findSolution = findSolution;
     this.#progress = { ...progress };
     this.#saveProgress = saveProgress;
+    this.#previewLevels = previewLevels;
     this.#now = now;
   }
 
@@ -185,7 +193,8 @@ export class GameController {
   start() {
     this.#puzzleDay = this.#now();
     this.#startedAt = this.#puzzleDay.getTime();
-    this.#level = this.#custom || this.#isDaily() ? null : this.#progress.current;
+    this.#level =
+      this.#custom || this.#isDaily() ? null : (this.#previewLevel ?? this.#progress.current);
     this.#watch = null;
     this.#extraTube = false;
     this.#dailyHints = DAILY_HINTS;
@@ -492,6 +501,7 @@ export class GameController {
     this.#setProgress(progress);
     if (moveOn) {
       this.#custom = null;
+      this.#previewLevel = null;
       this.start();
       this.#hud.showToast(texts.cloudProgressLoaded(progress.solved));
     } else {
@@ -501,10 +511,19 @@ export class GameController {
 
   /** Plays a level picked from the list; levels that are still locked are ignored. */
   playLevel(level) {
-    if (this.#animating || level < 1 || level > lastOpenLevel(this.#progress)) return;
+    if (this.#animating || level < 1) return;
 
     this.#custom = null;
-    this.#updateProgress({ mode: 'level', current: level });
+    if (level <= lastOpenLevel(this.#progress)) {
+      this.#previewLevel = null;
+      this.#updateProgress({ mode: 'level', current: level });
+    } else if (this.#previewLevels.has(level)) {
+      // Opened for a look: where the player really is stays as it is.
+      this.#previewLevel = level;
+      this.#updateProgress({ mode: 'level' });
+    } else {
+      return;
+    }
     this.start();
   }
 
@@ -512,6 +531,7 @@ export class GameController {
     if (this.#animating) return;
 
     this.#custom = null;
+    this.#previewLevel = null;
     this.#updateProgress({ mode: 'daily' });
     this.start();
   }
@@ -521,16 +541,20 @@ export class GameController {
    * shared puzzle, or back to the editor after testing a custom one.
    */
   continueAfterWin() {
-    const finished = this.#level === LEVEL_COUNT && !this.#custom && !this.#isDaily();
+    const finished =
+      this.#level === LEVEL_COUNT && !this.#custom && !this.#isDaily() && !this.#isPreview();
     this.#leaveWin();
     if (finished) this.showFinish();
   }
 
   #leaveWin() {
     const custom = this.#custom;
+    const preview = this.#previewLevel !== null;
     this.#custom = null;
+    this.#previewLevel = null;
     if (this.#isDaily()) this.#updateProgress({ mode: 'level' });
     this.start();
+    if (preview) this.showLevels();
     if (custom?.fromEditor) this.#onEditPuzzle(custom.puzzle);
   }
 
@@ -552,7 +576,9 @@ export class GameController {
 
   /** Plays the puzzle just solved once more, e.g. to try for more stars. */
   replay() {
-    if (this.#level !== null) this.#updateProgress({ current: this.#level });
+    if (this.#level !== null && this.#previewLevel === null) {
+      this.#updateProgress({ current: this.#level });
+    }
     this.start();
   }
 
@@ -574,7 +600,7 @@ export class GameController {
       return;
     }
 
-    this.#updateProgress({ current: level });
+    if (this.#previewLevel === null) this.#updateProgress({ current: level });
     this.start();
     this.#watch = { moves: solution, done: 0, busy: false };
     this.#refreshHud();
@@ -686,7 +712,7 @@ export class GameController {
     const log = this.#session.moveLog();
     const hints = this.#session.hints;
     const notes = [];
-    if (this.#level !== null) {
+    if (this.#level !== null && !this.#isPreview()) {
       const opened = this.#recordSolvedLevel(this.#level);
       if (opened) notes.push(texts.stageOpened(opened));
     }
@@ -718,7 +744,7 @@ export class GameController {
       const { streak } = this.#getDailySummary(this.#puzzleDay);
       if (streak >= 2) notes.push(texts.dailyStreakNote(streak));
       shareText = texts.shareDailyText(this.#puzzleDay, stars, moves, seconds, streak);
-    } else if (this.#level !== null) {
+    } else if (this.#level !== null && !this.#isPreview()) {
       const { progress, earnedUndo } = recordLevelWin(
         this.#progress,
         this.#level,
@@ -747,7 +773,7 @@ export class GameController {
       attempts,
       continueLabel: this.#custom?.fromEditor
         ? texts.backToEditor
-        : this.#level === null
+        : this.#level === null || this.#isPreview()
           ? texts.backToLevels
           : this.#level === LEVEL_COUNT
             ? texts.finishGame
@@ -963,7 +989,12 @@ export class GameController {
     const lastOpen = lastOpenLevel(this.#progress);
     return Array.from({ length: count }, (_, i) => {
       const level = first + i;
-      const state = level <= solved ? 'solved' : level <= lastOpen ? 'open' : 'locked';
+      const state =
+        level <= solved
+          ? 'solved'
+          : level <= lastOpen || this.#previewLevels.has(level)
+            ? 'open'
+            : 'locked';
       const stars = records[level]?.best ?? 0;
       return {
         level,
@@ -987,6 +1018,11 @@ export class GameController {
   #setProgress(progress) {
     this.#progress = progress;
     this.#saveProgress(progress);
+  }
+
+  /** Whether the level on the board is one opened only for a look. */
+  #isPreview() {
+    return this.#previewLevel !== null && this.#level === this.#previewLevel;
   }
 
   #isDaily() {

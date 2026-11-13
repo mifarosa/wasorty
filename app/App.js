@@ -31,6 +31,7 @@ import { LETTERS } from './src/brand.js';
 import { deviceLocale } from './src/deviceLocale.js';
 import { createFeedback } from './src/feedback.js';
 import { createSound } from './src/sound.js';
+import { previewLevelsOf } from './src/previewLevels.js';
 import { loadSoundSdk } from './src/soundSdk.js';
 import { chooseLanguage } from './src/language.js';
 import { storage } from './src/storage.js';
@@ -226,6 +227,7 @@ export default function App() {
         getDailySummary: (today) => dailyBoard.summary(today),
         leaderboardOnline: dailyBoard.online,
         progress: loadProgress(storage),
+        previewLevels: previewLevelsOf(),
         saveProgress: (progress) => {
           saveProgress(progress, storage);
           cloudRef.current?.cloudSync.schedule();
