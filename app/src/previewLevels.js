@@ -12,10 +12,10 @@ import {
  * the levels before them, so a build can be tried on all kinds of boards. Playing one counts
  * for nothing: no stars and no progress (see `previewLevels` of GameController).
  *
- * It is on for builds that are only tried out. Set it to false for the build that goes to the
- * App Store.
+ * It is off for the build that goes to the App Store, and can be set to true for a build that is
+ * only tried out.
  */
-export const PREVIEW_LEVELS = true;
+export const PREVIEW_LEVELS = false;
 
 /** @returns {Set<number>} the levels that can be opened for a look */
 export function previewLevelsOf(enabled = PREVIEW_LEVELS) {
