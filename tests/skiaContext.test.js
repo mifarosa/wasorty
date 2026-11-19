@@ -82,6 +82,19 @@ function fakeSkia({ surfaces = true } = {}) {
     StrokeJoin: { Round: 'round', Miter: 'miter' },
     ClipOp: { Intersect: 'intersect' }
   };
+  // The native functions of Skia need the object they belong to as `this`; taken out of it and
+  // called on their own they throw. The stand-in does the same.
+  const guard = (owner) => {
+    for (const [name, value] of Object.entries(owner)) {
+      if (typeof value === 'function') {
+        owner[name] = function (...args) {
+          if (this !== owner) throw new Error('Expected Api but got non-object');
+          return value(...args);
+        };
+      } else if (value && typeof value === 'object') guard(value);
+    }
+  };
+  guard(skia.Skia);
   return skia;
 }
 

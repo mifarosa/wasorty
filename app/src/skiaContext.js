@@ -181,11 +181,12 @@ export class SkiaContext2D {
       // One image pixel on one pixel of the screen: the box is moved to the pixel grid and
       // takes the size of the image, so thin lines stay as sharp as they were drawn.
       const ratio = this.#pixelRatio;
-      const { XYWHRect } = this.#skia.Skia;
+      // Called on `Skia`, not taken out of it: the native functions need their `this`.
+      const { Skia } = this.#skia;
       this.#canvas.drawImageRect(
         texture,
-        XYWHRect(0, 0, image.width, image.height),
-        XYWHRect(
+        Skia.XYWHRect(0, 0, image.width, image.height),
+        Skia.XYWHRect(
           Math.round(x * ratio) / ratio,
           Math.round(y * ratio) / ratio,
           image.width / ratio,
