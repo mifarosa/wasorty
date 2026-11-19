@@ -147,3 +147,16 @@ Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona 
   (App Store Connect'te _Privacy Policy URL_ olarak bunu gir; Türkçe ve İngilizce aynı sayfada).
 - Sıra: PR merge → Actions → _iOS build_ → `submit` işaretli → App Store Connect'te build'i seç →
   incelemeye gönder.
+
+## Açılış ekranı ve akıcılık (sürüm 1.0.1)
+
+- **Açılış ekranı:** Expo şablonunun gri yer tutucu görseli (ızgara ve halkalar) yerine uygulamanın
+  simgesi çıkar; arka plan açık modda `#d6deef`, koyu modda `#0b0e1d` (oyunun kendi açılış
+  animasyonunun rengi, geçişte parlama olmasın). Paket `expo-splash-screen` (SDK 58 tablosundaki
+  `58.0.11`, tam sürüm sabit) ve `app.json` → `plugins` içindeki ayar. Görsel `assets/splash-icon.png`
+  (kenarlarında boşluk var: Android 12'de yuvarlak maske kırpmasın). Native bir değişiklik:
+  `runtimeVersion` `1.4.0`, yeni build gerekir.
+- **Kasma:** Tahtanın çizimi her karede bütün tüpleri JavaScript'ten baştan çiziyordu (iPhone
+  kaldırıyordu, orta seviye Android'ler kaldıramıyordu). Artık durağan tüpler bir kez çizilip hazır
+  Skia resmi olarak tekrar kullanılıyor, boyalar da yeniden kullanılıyor (`app/src/skiaContext.js`,
+  `src/scene/renderer.js`). Sadece JavaScript tarafı; web sürümünün çizimi aynı kaldı.

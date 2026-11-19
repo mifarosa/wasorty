@@ -28,7 +28,12 @@ describe('TubeScene', () => {
     const context = new Proxy(
       {},
       {
-        get: (_, name) => (name === 'clearRect' ? () => clears++ : () => {}),
+        get: (_, name) =>
+          name === 'clearRect'
+            ? () => clears++
+            : name === 'getTransform' || name === 'createCanvas'
+              ? undefined
+              : () => {},
         set: () => true
       }
     );

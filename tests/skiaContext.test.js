@@ -6,26 +6,36 @@ import { TubeView } from '../src/scene/tubeView.js';
 import { arrangeTubes, fitToView } from '../src/scene/layout.js';
 import { HIDDEN } from '../src/game/rules.js';
 
-/** A stand-in for React Native Skia that writes down what it is asked to draw. */
+/**
+ * A stand-in for React Native Skia that writes down what it is asked to draw. Every recording
+ * has a log of its own, as a picture of Skia has, and `recordings` counts how many were made.
+ */
 function fakeSkia() {
-  const log = [];
-  const canvas = {
-    save: () => log.push(['save']),
-    restore: () => log.push(['restore']),
-    translate: (x, y) => log.push(['translate', x, y]),
-    scale: (x, y) => log.push(['scale', x, y]),
-    rotate: (degrees) => log.push(['rotate', degrees]),
-    drawPath: (path, paint) => log.push(['drawPath', path.ops.length, paint.style, paint.color]),
-    drawRect: (rect, paint) => log.push(['drawRect', rect, paint.style, paint.color]),
-    clipPath: () => log.push(['clip']),
-    drawText: (text) => log.push(['text', text])
-  };
+  const state = { recordings: 0 };
   const skia = {
+    state,
     Skia: {
-      PictureRecorder: () => ({
-        beginRecording: () => canvas,
-        finishRecordingAsPicture: () => ({ log: log.splice(0) })
-      }),
+      PictureRecorder: () => {
+        state.recordings++;
+        const log = [];
+        const canvas = {
+          save: () => log.push(['save']),
+          restore: () => log.push(['restore']),
+          translate: (x, y) => log.push(['translate', x, y]),
+          scale: (x, y) => log.push(['scale', x, y]),
+          rotate: (degrees) => log.push(['rotate', degrees]),
+          drawPath: (path, paint) =>
+            log.push(['drawPath', path.ops.length, paint.style, paint.color]),
+          drawRect: (rect, paint) => log.push(['drawRect', rect, paint.style, paint.color]),
+          drawPicture: (picture) => log.push(['drawPicture', picture]),
+          clipPath: () => log.push(['clip']),
+          drawText: (text) => log.push(['text', text])
+        };
+        return {
+          beginRecording: () => canvas,
+          finishRecordingAsPicture: () => ({ log })
+        };
+      },
       XYWHRect: (x, y, width, height) => ({ x, y, width, height }),
       // As in React Native Skia 2: a path is immutable, a builder makes it (a path has no moveTo).
       PathBuilder: {
@@ -39,6 +49,7 @@ function fakeSkia() {
         }
       },
       Paint: () => {
+        state.paints = (state.paints ?? 0) + 1;
         const paint = {};
         paint.setAntiAlias = () => {};
         paint.setColor = (color) => (paint.color = color);
@@ -58,7 +69,13 @@ function fakeSkia() {
   return skia;
 }
 
-function drawOnce(setUp) {
+/** What a picture draws, with the pictures it puts inside it opened up. */
+function flatten(log) {
+  return log.flatMap((entry) => (entry[0] === 'drawPicture' ? flatten(entry[1].log) : [entry]));
+}
+
+/** A board drawn on a Skia context, which can be drawn again (frame after frame). */
+function board(setUp) {
   const skia = fakeSkia();
   let picture = null;
   const context = new SkiaContext2D(skia, {
@@ -70,16 +87,23 @@ function drawOnce(setUp) {
   const { positions, bounds } = arrangeTubes(tubes.length, 390 / 600, tubes[0].height);
   tubes.forEach((tube, index) => Object.assign(tube, positions[index]));
   const view = fitToView(bounds, 390, 600, 80, 120);
-  drawScene(context, {
-    width: 390,
-    height: 600,
-    tubes,
-    streams: new Set([{ visible: true, color: 0, x: 0, top: 3, bottom: 1 }]),
-    view,
-    glassColor: '#ffffff',
-    symbols: true
-  });
-  return new Promise((resolve) => queueMicrotask(() => resolve(picture)));
+  const frame = () => {
+    drawScene(context, {
+      width: 390,
+      height: 600,
+      tubes,
+      streams: new Set([{ visible: true, color: 0, x: 0, top: 3, bottom: 1 }]),
+      view,
+      glassColor: '#ffffff',
+      symbols: true
+    });
+    return new Promise((resolve) => queueMicrotask(() => resolve(picture)));
+  };
+  return { skia, tubes, frame };
+}
+
+function drawOnce(setUp) {
+  return board(setUp).frame();
 }
 
 describe('colors', () => {
@@ -111,7 +135,7 @@ describe('the Skia context', () => {
       return [plain, hidden, locked, capped, tilted, new TubeView(5)];
     });
 
-    const kinds = picture.log.map((entry) => entry[0]);
+    const kinds = flatten(picture.log).map((entry) => entry[0]);
     expect(kinds).toContain('drawPath');
     expect(kinds).toContain('clip');
     expect(kinds).toContain('text');
@@ -120,11 +144,88 @@ describe('the Skia context', () => {
       kinds.filter((kind) => kind === 'restore').length
     );
     // Strokes and fills both appear, with their alpha.
-    const styles = new Set(picture.log.filter((e) => e[0] === 'drawPath').map((e) => e[2]));
+    const drawn = flatten(picture.log);
+    const styles = new Set(drawn.filter((e) => e[0] === 'drawPath').map((e) => e[2]));
     expect(styles).toEqual(new Set(['fill', 'stroke']));
-    expect(picture.log.some((e) => e[0] === 'drawPath' && /rgba\(.*, 0\.\d+\)/.test(e[3]))).toBe(
-      true
-    );
+    expect(drawn.some((e) => e[0] === 'drawPath' && /rgba\(.*, 0\.\d+\)/.test(e[3]))).toBe(true);
+  });
+
+  describe('tubes kept as pictures', () => {
+    const resting = () => {
+      const tubes = [0, 1, 2].map((index) => new TubeView(index));
+      tubes.forEach((tube) => tube.showColors([0, 1, 2, 0]));
+      return tubes;
+    };
+
+    it('puts a tube at rest on the board as a picture of its own', async () => {
+      const { frame } = board(resting);
+      const picture = await frame();
+      const placed = picture.log.filter((entry) => entry[0] === 'drawPicture');
+      expect(placed).toHaveLength(3);
+      // What the tubes draw is inside those pictures, not drawn again on the board.
+      expect(picture.log.some((entry) => entry[0] === 'drawPath')).toBe(true); // the stream
+      expect(flatten(placed.map((entry) => entry)).length).toBeGreaterThan(placed.length);
+      // Each one is moved and scaled into its box first.
+      const at = picture.log.findIndex((entry) => entry[0] === 'drawPicture');
+      expect(picture.log[at - 3].slice(0, 1)).toEqual(['save']);
+      expect(picture.log[at - 2][0]).toBe('translate');
+      expect(picture.log[at - 1][0]).toBe('scale');
+    });
+
+    it('draws them again from the pictures it has, which costs no new drawing', async () => {
+      const { frame, skia } = board(resting);
+      await frame();
+      // The board, and a picture for each of the three tubes.
+      expect(skia.state.recordings).toBe(1 + 3);
+      const paints = skia.state.paints;
+      await frame();
+      await frame();
+      // Only the board is recorded again: the tubes still look the same.
+      expect(skia.state.recordings).toBe(1 + 3 + 2);
+      expect(skia.state.paints).toBe(paints);
+    });
+
+    it('makes the picture of a tube again when the tube changes', async () => {
+      const { frame, skia, tubes } = board(resting);
+      await frame();
+      const before = skia.state.recordings;
+      tubes[1].showColors([1, 1, 1, 1]);
+      await frame();
+      // The board and the one tube that changed.
+      expect(skia.state.recordings).toBe(before + 2);
+    });
+
+    it('draws a tube that moves on the board itself, in every frame', async () => {
+      const { frame, tubes } = board(resting);
+      tubes[0].body.tilt = 0.6;
+      const picture = await frame();
+      expect(picture.log.filter((entry) => entry[0] === 'drawPicture')).toHaveLength(2);
+      expect(picture.log.filter((entry) => entry[0] === 'drawPath').length).toBeGreaterThan(5);
+    });
+  });
+
+  it('reuses a paint for the same color and width', () => {
+    const skia = fakeSkia();
+    const context = new SkiaContext2D(skia, {
+      size: () => ({ width: 100, height: 100 }),
+      onPicture: () => {},
+      fontFor: () => ({})
+    });
+    context.clearRect(0, 0, 100, 100);
+    context.fillStyle = '#336699';
+    for (let i = 0; i < 20; i++) context.fillRect(i, 0, 5, 5);
+    context.strokeStyle = '#336699';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(0, 0);
+    context.lineTo(10, 10);
+    context.stroke();
+    context.stroke();
+    // One paint to fill and one to stroke, not one for every shape.
+    expect(skia.state.paints).toBe(2);
+    context.lineWidth = 3;
+    context.stroke();
+    expect(skia.state.paints).toBe(3);
   });
 
   it('turns arcs into curves that start where Canvas would start them', async () => {

@@ -1,6 +1,8 @@
 import { parseColor } from './color.js';
 
 const TAU = Math.PI * 2;
+/** The most paints kept for reuse; a board uses a few dozen. */
+const MAX_PAINTS = 512;
 
 /**
  * Just enough of a `CanvasRenderingContext2D` to draw the board with the same code as the
@@ -31,6 +33,8 @@ export class SkiaContext2D {
   #current = null;
   #stack = [];
   #flushQueued = false;
+  #paints;
+  #offscreen;
 
   /**
    * @param {object} skia
@@ -38,12 +42,19 @@ export class SkiaContext2D {
    * @param {() => { width: number, height: number }} options.size the canvas size in pixels
    * @param {(picture: object) => void} options.onPicture
    * @param {(size: number, bold: boolean) => object} options.fontFor a Skia font of a size
+   * @param {boolean} [options.offscreen] draws into a picture of its own, handed over by `finish`,
+   *   not onto the screen (the picture of a tube, see `createCanvas`)
+   * @param {Map<string, object>} [options.paints] paints already made, shared with the contexts
+   *   made by this one
    */
-  constructor(skia, { size, onPicture, fontFor }) {
+  constructor(skia, { size, onPicture, fontFor, offscreen = false, paints = new Map() }) {
     this.#skia = skia;
     this.#size = size;
     this.#onPicture = onPicture;
     this.#fontFor = fontFor;
+    this.#paints = paints;
+    this.#offscreen = offscreen;
+    if (offscreen) this.#startRecording();
   }
 
   // The board is drawn in dp, which Skia uses too, so the pixel ratio needs no scaling.
@@ -51,13 +62,66 @@ export class SkiaContext2D {
 
   clearRect(x, y, width, height) {
     const size = this.#size();
-    if (this.#canvas || x > 0 || y > 0 || width < size.width || height < size.height) return;
-    this.#recorder = this.#skia.Skia.PictureRecorder();
-    this.#canvas = this.#recorder.beginRecording(
-      this.#skia.Skia.XYWHRect(0, 0, size.width, size.height)
-    );
-    this.#stack = [];
+    if (this.#offscreen || this.#canvas) return;
+    if (x > 0 || y > 0 || width < size.width || height < size.height) return;
+    this.#startRecording();
     this.#queueFlush();
+  }
+
+  #startRecording() {
+    const { width, height } = this.#size();
+    this.#recorder = this.#skia.Skia.PictureRecorder();
+    this.#canvas = this.#recorder.beginRecording(this.#skia.Skia.XYWHRect(0, 0, width, height));
+    this.#stack = [];
+  }
+
+  /** The board is drawn in dp, which Skia uses too, so the scale is one. */
+  getTransform() {
+    return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  }
+
+  /**
+   * A canvas to draw something that does not change into once, and put on the board as often as
+   * needed (the website does the same with the canvases of a page): the board code draws a tube
+   * at rest into it and then `drawImage`s it. What is drawn stays a picture of drawing commands,
+   * so Skia plays it back without JavaScript, which is what keeps a board of many tubes smooth
+   * on a phone that is slower than an iPhone.
+   */
+  createCanvas() {
+    const sprite = { width: 0, height: 0, context: null, made: null };
+    sprite.getContext = () => {
+      // Every new drawing starts a new picture.
+      sprite.made = null;
+      sprite.context = new SkiaContext2D(this.#skia, {
+        size: () => ({ width: sprite.width, height: sprite.height }),
+        fontFor: this.#fontFor,
+        offscreen: true,
+        paints: this.#paints
+      });
+      return sprite.context;
+    };
+    sprite.picture = () => (sprite.made ??= sprite.context?.finish() ?? null);
+    return sprite;
+  }
+
+  /** Ends an offscreen drawing and gives its picture. */
+  finish() {
+    if (!this.#recorder) return null;
+    const picture = this.#recorder.finishRecordingAsPicture();
+    this.#canvas = null;
+    this.#recorder = null;
+    return picture;
+  }
+
+  /** Puts a canvas made by `createCanvas` on this one, in the box given. */
+  drawImage(image, x, y, width, height) {
+    const picture = image?.picture?.();
+    if (!picture || !this.#canvas) return;
+    this.#canvas.save();
+    this.#canvas.translate(x, y);
+    this.#canvas.scale(width / image.width, height / image.height);
+    this.#canvas.drawPicture(picture);
+    this.#canvas.restore();
   }
 
   save() {
@@ -245,7 +309,23 @@ export class SkiaContext2D {
     }
   }
 
+  /** A paint for what is being drawn; the same paint is used again for the same colors and widths. */
   #paint(kind) {
+    const style = kind === 'fill' ? this.fillStyle : this.strokeStyle;
+    const key =
+      kind === 'fill'
+        ? `f|${style}|${this.globalAlpha}`
+        : `s|${style}|${this.globalAlpha}|${this.lineWidth}|${this.lineCap}|${this.lineJoin}`;
+    let paint = this.#paints.get(key);
+    if (!paint) {
+      paint = this.#makePaint(kind);
+      if (this.#paints.size >= MAX_PAINTS) this.#paints.clear();
+      this.#paints.set(key, paint);
+    }
+    return paint;
+  }
+
+  #makePaint(kind) {
     const { Skia, PaintStyle, StrokeCap, StrokeJoin } = this.#skia;
     const paint = Skia.Paint();
     const [r, g, b, a] = parseColor(kind === 'fill' ? this.fillStyle : this.strokeStyle);
