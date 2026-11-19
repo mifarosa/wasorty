@@ -1,8 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { PixelRatio, Platform, View } from 'react-native';
 import * as Skia from '@shopify/react-native-skia';
 import { TubeScene } from '../../src/scene/tubeScene.js';
 import { SkiaContext2D } from './skiaContext.js';
+
+/** Android shows an opaque canvas the cheapest way; iOS keeps the look it has always had. */
+const ANDROID = Platform.OS === 'android';
 
 const fonts = new Map();
 
@@ -27,13 +30,24 @@ function fontFor(size, bold) {
  * stand-in for a canvas element, which draws through Skia (see skiaContext.js) and passes taps
  * on. The game only sees the scene, which reports taps and is told what to show.
  *
+ * On Android the canvas covers its place completely (it paints the color of the screen first),
+ * which lets Android show it the cheapest way, on a surface of its own, instead of blending a
+ * transparent one in with the rest of the screen in every frame.
+ *
  * @param {object} props
  * @param {(scene: TubeScene) => void} props.onScene called once the scene is ready
+ * @param {string} props.background the color of the screen behind the board
  */
-export function NativeBoard({ onScene }) {
+export const NativeBoard = memo(function NativeBoard({ onScene, background }) {
   const [picture, setPicture] = useState(null);
   const size = useRef({ width: 0, height: 0 });
   const scene = useRef(null);
+  // What the context paints first; read when a frame is made, so a new theme shows at once.
+  const backgroundRef = useRef(background);
+  backgroundRef.current = background;
+  useEffect(() => {
+    scene.current?.redraw();
+  }, [background]);
   const host = useMemo(() => {
     const resizeCallbacks = [];
     // A still board is drawn once, and that last frame can fail to reach the screen. So when
@@ -64,7 +78,10 @@ export function NativeBoard({ onScene }) {
             setPicture(next);
             settle();
           },
-          fontFor
+          fontFor,
+          pixelRatio: PixelRatio.get(),
+          textures: ANDROID,
+          background: () => (ANDROID ? backgroundRef.current : null)
         }),
       addEventListener: (type, listener) => {
         if (type === 'pointerdown') element.pointerDown = listener;
@@ -108,9 +125,15 @@ export function NativeBoard({ onScene }) {
         host.pointerDown?.({ clientX: locationX, clientY: locationY });
       }}
     >
-      <Skia.Canvas style={{ flex: 1 }} pointerEvents="none">
+      <Skia.Canvas
+        style={{ flex: 1 }}
+        pointerEvents="none"
+        opaque={ANDROID}
+        colorSpace={ANDROID ? 'srgb' : 'p3'}
+        androidWarmup
+      >
         {picture && <Skia.Picture picture={picture} />}
       </Skia.Canvas>
     </View>
   );
-}
+});

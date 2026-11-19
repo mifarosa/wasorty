@@ -242,7 +242,13 @@ function recordingContext() {
   const ctx = new Proxy(
     { fills, texts, strokes },
     {
-      get: (target, name) => (name in target ? target[name] : (record[name] ?? (() => {}))),
+      // A context that does not keep tubes as pictures (it has no `getTransform` or `createCanvas`).
+      get: (target, name) =>
+        name === 'getTransform' || name === 'createCanvas'
+          ? undefined
+          : name in target
+            ? target[name]
+            : (record[name] ?? (() => {})),
       set: (target, name, value) => ((target[name] = value), true)
     }
   );

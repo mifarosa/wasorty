@@ -256,8 +256,32 @@ function drawFromSprite(ctx, tube, view, look, isOil) {
   return true;
 }
 
+/**
+ * Whether a settled tube can be kept as a picture: the context must tell its scale
+ * (`getTransform`) and be able to make a canvas of its own, either itself (`createCanvas`, as
+ * the app's Skia context does) or through the page (`document`).
+ */
 function canUseSprites(ctx) {
-  return typeof document !== 'undefined' && Boolean(ctx.getTransform);
+  if (!ctx.getTransform) return false;
+  return typeof ctx.createCanvas === 'function' || typeof document !== 'undefined';
+}
+
+function createSpriteCanvas(ctx) {
+  return typeof ctx.createCanvas === 'function'
+    ? ctx.createCanvas()
+    : document.createElement('canvas');
+}
+
+const paletteKeys = new WeakMap();
+
+/** The palette as text for a sprite's key, joined once per palette and not for every tube. */
+function paletteKey(palette) {
+  let key = paletteKeys.get(palette);
+  if (key === undefined) {
+    key = palette.join('');
+    paletteKeys.set(palette, key);
+  }
+  return key;
 }
 
 /** The picture of a settled tube, made again when anything it shows has changed. */
@@ -266,7 +290,7 @@ function spriteOf(ctx, tube, view, look, isOil) {
   const pixelsPerUnit = Math.round(ctx.getTransform().a * view.scale * 4) / 4;
   const key = spriteKey(tube, look, isOil, pixelsPerUnit);
   if (tube.sprite?.key !== key) {
-    const canvas = tube.sprite?.canvas ?? document.createElement('canvas');
+    const canvas = tube.sprite?.canvas ?? createSpriteCanvas(ctx);
     canvas.width = Math.ceil((TUBE_RADIUS + side) * 2 * pixelsPerUnit);
     canvas.height = Math.ceil((top + tube.height + bottom) * pixelsPerUnit);
     // The tube as it would stand at rest, with its mouth `top` units from the top edge.
@@ -314,7 +338,7 @@ function spriteKey(tube, look, isOil, pixelsPerUnit) {
     look.glassColor,
     look.glassGlow,
     look.symbols ? 1 : 0,
-    look.palette.join(''),
+    paletteKey(look.palette),
     tube.size,
     tube.oneWay ? 1 : 0,
     tube.lockKey,

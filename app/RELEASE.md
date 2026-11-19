@@ -147,3 +147,34 @@ Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona 
   (App Store Connect'te _Privacy Policy URL_ olarak bunu gir; Türkçe ve İngilizce aynı sayfada).
 - Sıra: PR merge → Actions → _iOS build_ → `submit` işaretli → App Store Connect'te build'i seç →
   incelemeye gönder.
+
+## Açılış ekranı ve akıcılık (sürüm 1.0.1)
+
+- **Açılış ekranı:** Expo şablonunun gri yer tutucu görseli (ızgara ve halkalar) yerine uygulamanın
+  simgesi çıkar; arka plan açık modda `#d6deef`, koyu modda `#0b0e1d` (oyunun kendi açılış
+  animasyonunun rengi, geçişte parlama olmasın). Paket `expo-splash-screen` (SDK 58 tablosundaki
+  `58.0.11`, tam sürüm sabit) ve `app.json` → `plugins` içindeki ayar. Görsel `assets/splash-icon.png`
+  (kenarlarında boşluk var: Android 12'de yuvarlak maske kırpmasın). Native bir değişiklik:
+  `runtimeVersion` `1.4.0`, yeni build gerekir.
+- **Kasma (hedef: Redmi 9C gibi düşük seviye Android'lerde de akıcı):** Cihazda deneyemediğim için
+  ölçerek ve her adımda geri dönüş yolu bırakarak yaptım.
+  - Tahta her karede bütün tüpleri JavaScript'ten baştan çiziyordu (karede 456 Skia çağrısı). Artık
+    durağan tüpler bir kez çizilip hazır resim olarak kullanılıyor (duran tahtada 90, sıvı dökerken
+    ~130 çağrı). Android'de bu resimler ayrıca GPU dokusuna çevriliyor (`textures`, piksel
+    hizasında 1:1, bulanık olmasın); doku yapılamazsa resme düşer. iPhone'da resim yolu yeterli,
+    çizim değişmedi.
+  - Her şekil için yeni Skia boyası yaratılmıyor, aynı renk ve kalınlık için boya yeniden kullanılıyor.
+  - Android'de çizim yüzeyi **opak** (`opaque`, ekran rengini kendisi boyuyor), böylece Android bunu
+    kendi yüzeyinde (SurfaceView) gösteriyor; saydam yüzey her karede GPU karışımı demek.
+    sRGB renk uzayı ve ilk karede ısınma (`androidWarmup`) açık. iPhone aynı kaldı (P3, saydam).
+  - **Kare hızı kendiliğinden ayarlanıyor** (`src/scene/tubeScene.js`): sıvı dökülürken bir kare
+    ortalama 9 ms'den uzun sürerse yaklaşık 30 kare/sn'e iner (dokunuşlara ve React'e zaman kalır),
+    5 ms'nin altına inince 60'a döner. Yavaş telefon kendini ayarlıyor, hızlısı etkilenmiyor.
+  - **Seviye açılışı:** Çözülebilir dağıtımı aramak en ağır seviyelerde (400, 319, 318, 75)
+    bilgisayarda bile 40-107 ms sürüyordu, yavaş telefonda saniyeler. Hangi dağıtımın çözülebilir
+    olduğu önceden bulunup `src/game/dealTable.js`'e yazıldı (`npm run bake`); toplam 1694 ms → 10 ms.
+    Bir test, tablonun seviyelerle birebir aynı bulmacayı verdiğini 400 seviyede doğrular.
+  - Ses: Android'de efekt başına tek oynatıcı (her biri bellek yer), sık kullanılanlar açılıştan
+    3,5 sn sonra boştayken tek tek hazırlanıyor, ilk dökmede takılma olmasın.
+  - Konfeti Android'de daha seyrek (her 3 parçadan biri).
+  - Sadece JavaScript tarafı; web sürümünün çizimi aynı kaldı.

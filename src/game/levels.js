@@ -1,3 +1,4 @@
+import { DEAL_TICKETS } from './dealTable.js';
 import { generatePuzzle } from './generator.js';
 import { createRandom, hashString } from './random.js';
 import { TALL_TUBE_CAPACITY, TUBE_CAPACITY } from './rules.js';
@@ -380,7 +381,17 @@ export function rulesFirstUsedAt(level) {
  * @returns {{ tubes: number[][], board: import('./rules.js').Board }}
  */
 export function createLevelPuzzle(level) {
-  return dealPuzzle(`level-${level}`, levelSettings(level));
+  return dealPuzzle(`level-${level}`, levelSettings(level), DEAL_TICKETS[level - 1] ?? null);
+}
+
+/**
+ * Which deal of a level is the solvable one, found by searching (what `npm run bake` writes to
+ * dealTable.js, so that a phone does not have to search when a level opens).
+ * @param {number} level
+ * @returns {[number, number]}
+ */
+export function findLevelDealTicket(level) {
+  return findDealTicket(`level-${level}`, levelSettings(level));
 }
 
 /**
@@ -412,11 +423,34 @@ export function dailySettings(dateKey) {
  * @param {string} key
  * @param {PuzzleSettings} settings
  */
-export function dealPuzzle(key, settings) {
+export function dealPuzzle(key, settings, ticket = null) {
+  if (ticket) {
+    // The solvable deal is known: no search, only the dealing.
+    const [seedAttempt, known] = ticket;
+    const seedKey = seedAttempt === 0 ? key : `${key}#${seedAttempt}`;
+    const puzzle = generatePuzzle(hashString(seedKey), settings, { known });
+    if (puzzle) return puzzle;
+  }
   for (let attempt = 0; attempt < SEED_ATTEMPTS; attempt++) {
     const seedKey = attempt === 0 ? key : `${key}#${attempt}`;
     const puzzle = generatePuzzle(hashString(seedKey), settings);
     if (puzzle) return puzzle;
+  }
+  throw new Error(`Could not deal a solvable puzzle for ${key}`);
+}
+
+/**
+ * Searches for the solvable deal of a puzzle and says which it is: the number of the seed
+ * ("key", "key#1" …) and of the deal that seed gave. See `dealPuzzle`.
+ * @param {string} key
+ * @param {PuzzleSettings} settings
+ * @returns {[number, number]}
+ */
+export function findDealTicket(key, settings) {
+  for (let attempt = 0; attempt < SEED_ATTEMPTS; attempt++) {
+    const seedKey = attempt === 0 ? key : `${key}#${attempt}`;
+    const trace = {};
+    if (generatePuzzle(hashString(seedKey), settings, { trace })) return [attempt, trace.attempt];
   }
   throw new Error(`Could not deal a solvable puzzle for ${key}`);
 }

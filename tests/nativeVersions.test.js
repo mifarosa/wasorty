@@ -18,6 +18,7 @@ const SDK_58 = {
   'expo-font': '58.0.10',
   'expo-haptics': '58.0.7',
   'expo-modules-core': '58.0.26',
+  'expo-splash-screen': '58.0.11',
   'expo-sqlite': '58.0.14',
   'expo-status-bar': '58.0.4',
   'expo-updates': '58.0.18',

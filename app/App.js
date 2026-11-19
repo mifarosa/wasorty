@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, Share, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import {
+  AppState,
+  Platform,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { DailyBoard } from '../src/app/dailyBoard.js';
@@ -88,7 +97,9 @@ export default function App() {
       createSound({
         load: loadSoundSdk,
         soundOn: () => latest.current.settings.sound,
-        musicOn: () => latest.current.settings.music
+        musicOn: () => latest.current.settings.music,
+        // One player to an effect on Android, where each one holds a good deal of memory.
+        poolSize: Platform.OS === 'android' ? 1 : 2
       }),
     []
   );
@@ -184,6 +195,13 @@ export default function App() {
   useEffect(() => {
     scene.current?.setLook(lookOf(settings.theme, scheme, settings.symbols));
   }, [settings.theme, settings.symbols, scheme]);
+
+  // The players of the common sounds are made once the game has settled, not in the middle of
+  // the first move.
+  useEffect(() => {
+    const timer = setTimeout(() => sound.warm(), 3500);
+    return () => clearTimeout(timer);
+  }, [sound]);
 
   // The music follows its setting, and rests while the app is in the background.
   useEffect(() => {
@@ -304,7 +322,7 @@ export default function App() {
             </HeaderButton>
           </View>
 
-          <NativeBoard onScene={onScene} />
+          <NativeBoard onScene={onScene} background={colors.bgBottom} />
 
           <View style={styles.toolbar}>
             <ToolButton
