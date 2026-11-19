@@ -35,6 +35,11 @@ export class SkiaContext2D {
   #flushQueued = false;
   #paints;
   #offscreen;
+  #pixelRatio;
+  #background;
+  #imagePaint = null;
+  #textures;
+  #transform;
 
   /**
    * @param {object} skia
@@ -46,14 +51,37 @@ export class SkiaContext2D {
    *   not onto the screen (the picture of a tube, see `createCanvas`)
    * @param {Map<string, object>} [options.paints] paints already made, shared with the contexts
    *   made by this one
+   * @param {number} [options.pixelRatio] device pixels in a dp: what a picture of a tube is made
+   *   as sharp as
+   * @param {() => string | null} [options.background] the color the whole board is painted in
+   *   first, for a canvas that covers its place completely (an opaque one is the cheapest to show)
+   * @param {boolean} [options.textures] keep a tube at rest as an image the graphics card holds,
+   *   not as a picture of drawing commands that is played again in every frame (a phone that
+   *   is slow needs it; a fast one does well with the picture)
    */
-  constructor(skia, { size, onPicture, fontFor, offscreen = false, paints = new Map() }) {
+  constructor(
+    skia,
+    {
+      size,
+      onPicture,
+      fontFor,
+      offscreen = false,
+      paints = new Map(),
+      pixelRatio = 1,
+      background,
+      textures = false
+    }
+  ) {
     this.#skia = skia;
     this.#size = size;
     this.#onPicture = onPicture;
     this.#fontFor = fontFor;
     this.#paints = paints;
     this.#offscreen = offscreen;
+    this.#pixelRatio = pixelRatio;
+    this.#background = background ?? null;
+    this.#textures = textures;
+    this.#transform = Object.freeze({ a: pixelRatio, b: 0, c: 0, d: pixelRatio, e: 0, f: 0 });
     if (offscreen) this.#startRecording();
   }
 
@@ -73,11 +101,19 @@ export class SkiaContext2D {
     this.#recorder = this.#skia.Skia.PictureRecorder();
     this.#canvas = this.#recorder.beginRecording(this.#skia.Skia.XYWHRect(0, 0, width, height));
     this.#stack = [];
+    const background = this.#offscreen ? null : this.#background?.();
+    if (background) {
+      this.#canvas.drawRect(this.#skia.Skia.XYWHRect(0, 0, width, height), this.#solid(background));
+    }
   }
 
-  /** The board is drawn in dp, which Skia uses too, so the scale is one. */
+  /**
+   * The board is drawn in dp, which Skia uses too, so the board itself is not scaled. The scale
+   * that is told is the one of the screen, so that a picture of a tube is made with as many
+   * pixels as the tube takes on the screen.
+   */
   getTransform() {
-    return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    return this.#transform;
   }
 
   /**
@@ -88,20 +124,44 @@ export class SkiaContext2D {
    * on a phone that is slower than an iPhone.
    */
   createCanvas() {
-    const sprite = { width: 0, height: 0, context: null, made: null };
+    const sprite = { width: 0, height: 0, context: null, made: null, image: undefined };
     sprite.getContext = () => {
       // Every new drawing starts a new picture.
       sprite.made = null;
+      sprite.image = undefined;
       sprite.context = new SkiaContext2D(this.#skia, {
         size: () => ({ width: sprite.width, height: sprite.height }),
         fontFor: this.#fontFor,
         offscreen: true,
-        paints: this.#paints
+        paints: this.#paints,
+        pixelRatio: this.#pixelRatio
       });
       return sprite.context;
     };
     sprite.picture = () => (sprite.made ??= sprite.context?.finish() ?? null);
+    // The picture as an image the graphics card keeps, which costs it far less to put on the
+    // board than the many shapes of the picture. null when no image could be made.
+    sprite.texture = () => {
+      if (sprite.image === undefined) {
+        const picture = sprite.picture();
+        sprite.image = picture ? this.#rasterize(picture, sprite.width, sprite.height) : null;
+      }
+      return sprite.image;
+    };
     return sprite;
+  }
+
+  #rasterize(picture, width, height) {
+    try {
+      const surface = this.#skia.Skia.Surface?.Make(Math.ceil(width), Math.ceil(height));
+      if (!surface) return null;
+      surface.getCanvas().drawPicture(picture);
+      surface.flush?.();
+      return surface.makeImageSnapshot();
+    } catch {
+      // The picture itself does as well, only slower.
+      return null;
+    }
   }
 
   /** Ends an offscreen drawing and gives its picture. */
@@ -115,13 +175,41 @@ export class SkiaContext2D {
 
   /** Puts a canvas made by `createCanvas` on this one, in the box given. */
   drawImage(image, x, y, width, height) {
-    const picture = image?.picture?.();
-    if (!picture || !this.#canvas) return;
+    if (!this.#canvas || !image) return;
+    const texture = this.#textures ? image.texture?.() : null;
+    if (texture) {
+      // One image pixel on one pixel of the screen: the box is moved to the pixel grid and
+      // takes the size of the image, so thin lines stay as sharp as they were drawn.
+      const ratio = this.#pixelRatio;
+      const { XYWHRect } = this.#skia.Skia;
+      this.#canvas.drawImageRect(
+        texture,
+        XYWHRect(0, 0, image.width, image.height),
+        XYWHRect(
+          Math.round(x * ratio) / ratio,
+          Math.round(y * ratio) / ratio,
+          image.width / ratio,
+          image.height / ratio
+        ),
+        this.#plainPaint()
+      );
+      return;
+    }
+    const picture = image.picture?.();
+    if (!picture) return;
     this.#canvas.save();
     this.#canvas.translate(x, y);
     this.#canvas.scale(width / image.width, height / image.height);
     this.#canvas.drawPicture(picture);
     this.#canvas.restore();
+  }
+
+  #plainPaint() {
+    if (!this.#imagePaint) {
+      this.#imagePaint = this.#skia.Skia.Paint();
+      this.#imagePaint.setAntiAlias(true);
+    }
+    return this.#imagePaint;
   }
 
   save() {
@@ -320,6 +408,25 @@ export class SkiaContext2D {
     if (!paint) {
       paint = this.#makePaint(kind);
       if (this.#paints.size >= MAX_PAINTS) this.#paints.clear();
+      this.#paints.set(key, paint);
+    }
+    return paint;
+  }
+
+  /** A paint that fills with one color. */
+  #solid(color) {
+    const key = `background|${color}`;
+    let paint = this.#paints.get(key);
+    if (!paint) {
+      const { Skia, PaintStyle } = this.#skia;
+      const [r, g, b, a] = parseColor(color);
+      paint = Skia.Paint();
+      paint.setColor(
+        Skia.Color(
+          `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`
+        )
+      );
+      paint.setStyle(PaintStyle.Fill);
       this.#paints.set(key, paint);
     }
     return paint;

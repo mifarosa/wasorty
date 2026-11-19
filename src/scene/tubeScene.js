@@ -38,6 +38,17 @@ function createOverlay(canvas) {
  * The board, drawn on a 2D canvas. It knows how to show and animate tubes, and reports
  * taps; it knows nothing about the rules of the game.
  */
+/**
+ * When drawing a frame of the moving board takes longer than this on average (ms), the scene
+ * draws only every other refresh of the screen (about 30 frames a second): a phone that needs
+ * that long for a frame has no time left for touches and the rest of the app at 60, and a pour
+ * looks fine at 30. It goes back to every refresh when frames cost less than FAST_FRAME_MS.
+ */
+const SLOW_FRAME_MS = 9;
+const FAST_FRAME_MS = 5;
+/** The least time between two drawn frames when the scene is slowed down. */
+const SLOW_GAP_MS = 30;
+
 export class TubeScene {
   #canvas;
   #context;
@@ -63,6 +74,10 @@ export class TubeScene {
   #bounds = null;
   #layoutPending = false;
   #frameRequested = false;
+  #now;
+  #frameCost = 0;
+  #frameGap = 0;
+  #lastDrawn = -Infinity;
   #onTubeTap = () => {};
   #onCue = () => {};
 
@@ -74,11 +89,19 @@ export class TubeScene {
    * @param {{ burst: () => void }} [options.confetti] thrown when a puzzle is solved
    * @param {boolean} [options.layered] draw what moves on a second canvas laid over the
    *   first, which only works for a canvas that fills the page
+   * @param {() => number} [options.now] the clock in ms, which times how long a frame takes
    */
   constructor(
     canvas,
-    { getTopInset = () => 0, getBottomInset = () => 0, confetti = null, layered = false } = {}
+    {
+      getTopInset = () => 0,
+      getBottomInset = () => 0,
+      confetti = null,
+      layered = false,
+      now = () => performance.now()
+    } = {}
   ) {
+    this.#now = now;
     this.#canvas = canvas;
     this.#context = canvas.getContext('2d', { desynchronized: true });
     if (layered) {
@@ -388,11 +411,33 @@ export class TubeScene {
   #requestRender() {
     if (this.#frameRequested) return;
     this.#frameRequested = true;
-    requestAnimationFrame(() => this.#renderFrame());
+    requestAnimationFrame(() => this.#paceFrame());
+  }
+
+  /** Draws the frame, unless the scene is slowed down and the last one is too recent. */
+  #paceFrame() {
+    if (this.#frameGap > 0 && this.#now() - this.#lastDrawn < this.#frameGap) {
+      requestAnimationFrame(() => this.#paceFrame());
+      return;
+    }
+    this.#renderFrame();
+  }
+
+  /** Learns how long a frame takes, to slow the scene down on a phone that needs long. */
+  #learnPace(cost) {
+    // Only frames of a board that moves tell: the first drawing of a puzzle makes the picture
+    // of every tube, which takes long once and is not what a pour costs.
+    const sample = Math.min(cost, 3 * SLOW_FRAME_MS);
+    this.#frameCost = this.#frameCost === 0 ? sample : this.#frameCost * 0.85 + sample * 0.15;
+    if (this.#frameGap === 0 && this.#frameCost > SLOW_FRAME_MS) this.#frameGap = SLOW_GAP_MS;
+    else if (this.#frameGap > 0 && this.#frameCost < FAST_FRAME_MS) this.#frameGap = 0;
   }
 
   #renderFrame() {
     this.#frameRequested = false;
+    const started = this.#now();
+    this.#lastDrawn = started;
+    const moving = this.#animator.isRunning;
     this.#animator.tick();
     const scene = {
       ...this.#size,
@@ -407,6 +452,7 @@ export class TubeScene {
     } else {
       drawScene(this.#context, scene);
     }
+    if (moving) this.#learnPace(this.#now() - started);
     if (this.#animator.isRunning) this.#requestRender();
   }
 }

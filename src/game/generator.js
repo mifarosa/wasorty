@@ -44,12 +44,18 @@ export function tubeSizes(shape) {
 /**
  * Deals a random, solvable puzzle. The same seed always deals the same puzzle.
  *
+ * Finding a solvable deal means trying deals until a search solves one, which is most of the
+ * work. `known` skips it: the number of the deal that turned out solvable (`trace.attempt` of an
+ * earlier run), so the same puzzle comes out with only the dealing to do.
+ *
  * @param {number} seed
  * @param {BoardShape} shape
+ * @param {{ known?: number | null, trace?: { attempt?: number } | null }} [options] known: the
+ *   deal to take, the earlier ones are passed over without a search; trace: told which deal it was
  * @returns {{ tubes: number[][], board: Board } | null} null when no solvable deal turned up,
  *   which happens now and then with a single empty tube
  */
-export function generatePuzzle(seed, shape) {
+export function generatePuzzle(seed, shape, { known = null, trace = null } = {}) {
   const { colorCount, capacity = TUBE_CAPACITY, lockedTubeCount = 0 } = shape;
   const { oilColorCount = 0 } = shape;
   const tubeCount = tubeSizes(shape).length;
@@ -65,10 +71,21 @@ export function generatePuzzle(seed, shape) {
     const board = createBoard(shape, oilColors, locks);
     if (oilColors.length > 0) floatOil(tubes, board);
 
+    // The deals before the known one were passed over by the search; all they cost is the dealing
+    // above, which has to be done for the random numbers to come out the same.
+    if (known !== null && attempt < known) continue;
+    if (known === attempt && !tubes.some(startsTooEasy)) {
+      if (trace) trace.attempt = attempt;
+      return { tubes, board };
+    }
+
     // A board of many colors has a search budget of its own: a deal the search cannot solve in
     // that many steps is passed over, and the next one is tried, so dealing stays quick.
     const search = shape.dealNodes ? { board, maxNodes: shape.dealNodes } : { board };
-    if (!tubes.some(startsTooEasy) && solve(tubes, search)) return { tubes, board };
+    if (!tubes.some(startsTooEasy) && solve(tubes, search)) {
+      if (trace) trace.attempt = attempt;
+      return { tubes, board };
+    }
   }
   return null;
 }

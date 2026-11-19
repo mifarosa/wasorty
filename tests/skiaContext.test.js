@@ -10,31 +10,47 @@ import { HIDDEN } from '../src/game/rules.js';
  * A stand-in for React Native Skia that writes down what it is asked to draw. Every recording
  * has a log of its own, as a picture of Skia has, and `recordings` counts how many were made.
  */
-function fakeSkia() {
-  const state = { recordings: 0 };
+function fakeSkia({ surfaces = true } = {}) {
+  const state = { recordings: 0, images: 0 };
+  const recordingCanvas = (log) => ({
+    save: () => log.push(['save']),
+    restore: () => log.push(['restore']),
+    translate: (x, y) => log.push(['translate', x, y]),
+    scale: (x, y) => log.push(['scale', x, y]),
+    rotate: (degrees) => log.push(['rotate', degrees]),
+    drawPath: (path, paint) => log.push(['drawPath', path.ops.length, paint.style, paint.color]),
+    drawRect: (rect, paint) => log.push(['drawRect', rect, paint.style, paint.color]),
+    drawPicture: (picture) => log.push(['drawPicture', picture]),
+    clipPath: () => log.push(['clip']),
+    drawText: (text) => log.push(['text', text]),
+    drawImageRect: (image, src, dest) => log.push(['drawImageRect', image, src, dest])
+  });
   const skia = {
     state,
     Skia: {
       PictureRecorder: () => {
         state.recordings++;
         const log = [];
-        const canvas = {
-          save: () => log.push(['save']),
-          restore: () => log.push(['restore']),
-          translate: (x, y) => log.push(['translate', x, y]),
-          scale: (x, y) => log.push(['scale', x, y]),
-          rotate: (degrees) => log.push(['rotate', degrees]),
-          drawPath: (path, paint) =>
-            log.push(['drawPath', path.ops.length, paint.style, paint.color]),
-          drawRect: (rect, paint) => log.push(['drawRect', rect, paint.style, paint.color]),
-          drawPicture: (picture) => log.push(['drawPicture', picture]),
-          clipPath: () => log.push(['clip']),
-          drawText: (text) => log.push(['text', text])
-        };
+        const canvas = recordingCanvas(log);
         return {
           beginRecording: () => canvas,
           finishRecordingAsPicture: () => ({ log })
         };
+      },
+      // A raster surface: what is drawn on it is kept as an image.
+      Surface: {
+        Make: (width, height) => {
+          if (!surfaces) return null;
+          const log = [];
+          return {
+            getCanvas: () => recordingCanvas(log),
+            flush: () => {},
+            makeImageSnapshot: () => {
+              state.images++;
+              return { width, height, log };
+            }
+          };
+        }
       },
       XYWHRect: (x, y, width, height) => ({ x, y, width, height }),
       // As in React Native Skia 2: a path is immutable, a builder makes it (a path has no moveTo).
@@ -71,17 +87,22 @@ function fakeSkia() {
 
 /** What a picture draws, with the pictures it puts inside it opened up. */
 function flatten(log) {
-  return log.flatMap((entry) => (entry[0] === 'drawPicture' ? flatten(entry[1].log) : [entry]));
+  return log.flatMap((entry) =>
+    entry[0] === 'drawPicture' || entry[0] === 'drawImageRect' ? flatten(entry[1].log) : [entry]
+  );
 }
 
 /** A board drawn on a Skia context, which can be drawn again (frame after frame). */
-function board(setUp) {
-  const skia = fakeSkia();
+function board(setUp, { surfaces, pixelRatio, background, textures = true } = {}) {
+  const skia = fakeSkia({ surfaces });
   let picture = null;
   const context = new SkiaContext2D(skia, {
     size: () => ({ width: 390, height: 600 }),
     onPicture: (made) => (picture = made),
-    fontFor: () => ({ getTextWidth: () => 10 })
+    fontFor: () => ({ getTextWidth: () => 10 }),
+    pixelRatio,
+    background,
+    textures
   });
   const tubes = setUp();
   const { positions, bounds } = arrangeTubes(tubes.length, 390 / 600, tubes[0].height);
@@ -150,57 +171,122 @@ describe('the Skia context', () => {
     expect(drawn.some((e) => e[0] === 'drawPath' && /rgba\(.*, 0\.\d+\)/.test(e[3]))).toBe(true);
   });
 
-  describe('tubes kept as pictures', () => {
+  describe('tubes kept as images', () => {
     const resting = () => {
       const tubes = [0, 1, 2].map((index) => new TubeView(index));
       tubes.forEach((tube) => tube.showColors([0, 1, 2, 0]));
       return tubes;
     };
+    const placed = (picture, kind) => picture.log.filter((entry) => entry[0] === kind);
 
-    it('puts a tube at rest on the board as a picture of its own', async () => {
+    it('puts a tube at rest on the board as an image the graphics card keeps', async () => {
       const { frame } = board(resting);
       const picture = await frame();
-      const placed = picture.log.filter((entry) => entry[0] === 'drawPicture');
-      expect(placed).toHaveLength(3);
-      // What the tubes draw is inside those pictures, not drawn again on the board.
-      expect(picture.log.some((entry) => entry[0] === 'drawPath')).toBe(true); // the stream
-      expect(flatten(placed.map((entry) => entry)).length).toBeGreaterThan(placed.length);
-      // Each one is moved and scaled into its box first.
-      const at = picture.log.findIndex((entry) => entry[0] === 'drawPicture');
-      expect(picture.log[at - 3].slice(0, 1)).toEqual(['save']);
-      expect(picture.log[at - 2][0]).toBe('translate');
-      expect(picture.log[at - 1][0]).toBe('scale');
+      const images = placed(picture, 'drawImageRect');
+      expect(images).toHaveLength(3);
+      // The tube is in the image, not drawn again on the board: only the stream is.
+      expect(picture.log.filter((entry) => entry[0] === 'drawPath')).toHaveLength(1);
+      expect(flatten(images).filter((entry) => entry[0] === 'drawPath').length).toBeGreaterThan(30);
+      // The whole image goes into the box of the tube.
+      const [, image, source, box] = images[0];
+      expect(source).toEqual({ x: 0, y: 0, width: image.width, height: image.height });
+      expect(box.width).toBeGreaterThan(0);
     });
 
-    it('draws them again from the pictures it has, which costs no new drawing', async () => {
+    it('draws them again from the images it has, which costs no new drawing', async () => {
       const { frame, skia } = board(resting);
       await frame();
-      // The board, and a picture for each of the three tubes.
+      // The board, and a picture and an image for each of the three tubes.
       expect(skia.state.recordings).toBe(1 + 3);
+      expect(skia.state.images).toBe(3);
       const paints = skia.state.paints;
       await frame();
       await frame();
       // Only the board is recorded again: the tubes still look the same.
       expect(skia.state.recordings).toBe(1 + 3 + 2);
+      expect(skia.state.images).toBe(3);
       expect(skia.state.paints).toBe(paints);
     });
 
-    it('makes the picture of a tube again when the tube changes', async () => {
+    it('makes the image of a tube again when the tube changes', async () => {
       const { frame, skia, tubes } = board(resting);
       await frame();
-      const before = skia.state.recordings;
       tubes[1].showColors([1, 1, 1, 1]);
       await frame();
-      // The board and the one tube that changed.
-      expect(skia.state.recordings).toBe(before + 2);
+      expect(skia.state.recordings).toBe(1 + 3 + 2);
+      expect(skia.state.images).toBe(4);
+    });
+
+    it('makes them as sharp as the screen is, in as many pixels as the tube takes there', async () => {
+      const sizeOf = async (pixelRatio) => {
+        const { frame } = board(resting, { pixelRatio });
+        const [, image] = placed(await frame(), 'drawImageRect')[0];
+        return image;
+      };
+      const one = await sizeOf(1);
+      const two = await sizeOf(2);
+      expect(two.width).toBeGreaterThanOrEqual(one.width * 1.9);
+      expect(two.height).toBeGreaterThanOrEqual(one.height * 1.9);
+    });
+
+    it('puts an image on the pixel grid of the screen, one pixel for one', async () => {
+      const { frame } = board(resting, { pixelRatio: 2 });
+      const picture = await frame();
+      for (const [, image, , box] of placed(picture, 'drawImageRect')) {
+        expect(box.x * 2).toBeCloseTo(Math.round(box.x * 2), 6);
+        expect(box.y * 2).toBeCloseTo(Math.round(box.y * 2), 6);
+        expect(box.width * 2).toBeCloseTo(image.width, 6);
+        expect(box.height * 2).toBeCloseTo(image.height, 6);
+      }
+    });
+
+    it('keeps the pictures, and makes no images, where textures are not asked for', async () => {
+      const { frame, skia } = board(resting, { textures: false });
+      const picture = await frame();
+      expect(placed(picture, 'drawImageRect')).toHaveLength(0);
+      expect(placed(picture, 'drawPicture')).toHaveLength(3);
+      expect(skia.state.images).toBe(0);
+    });
+
+    it('falls back on the picture when no image can be made', async () => {
+      const { frame } = board(resting, { surfaces: false });
+      const picture = await frame();
+      expect(placed(picture, 'drawImageRect')).toHaveLength(0);
+      expect(placed(picture, 'drawPicture')).toHaveLength(3);
+      const at = picture.log.findIndex((entry) => entry[0] === 'drawPicture');
+      expect(picture.log.slice(at - 3, at).map((entry) => entry[0])).toEqual([
+        'save',
+        'translate',
+        'scale'
+      ]);
     });
 
     it('draws a tube that moves on the board itself, in every frame', async () => {
       const { frame, tubes } = board(resting);
       tubes[0].body.tilt = 0.6;
       const picture = await frame();
-      expect(picture.log.filter((entry) => entry[0] === 'drawPicture')).toHaveLength(2);
+      expect(placed(picture, 'drawImageRect')).toHaveLength(2);
       expect(picture.log.filter((entry) => entry[0] === 'drawPath').length).toBeGreaterThan(5);
+    });
+
+    it('paints the board in its own color first when it has one', async () => {
+      const { frame } = board(resting, { background: () => '#102030' });
+      const picture = await frame();
+      expect(picture.log[0][0]).toBe('drawRect');
+      expect(picture.log[0][1]).toEqual({ x: 0, y: 0, width: 390, height: 600 });
+      expect(picture.log[0][3]).toBe('rgba(16, 32, 48, 1)');
+      // A tube's own picture has no background.
+      expect(
+        flatten(placed(picture, 'drawImageRect')).some(
+          (entry) => entry[3] === 'rgba(16, 32, 48, 1)'
+        )
+      ).toBe(false);
+    });
+
+    it('leaves the board transparent when it has no color', async () => {
+      const { frame } = board(resting);
+      const picture = await frame();
+      expect(picture.log.some((entry) => entry[0] === 'drawRect')).toBe(false);
     });
   });
 

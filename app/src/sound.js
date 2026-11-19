@@ -15,8 +15,8 @@ const VOLUMES = {
   win: 0.9
 };
 const MUSIC_VOLUME = 0.3;
-/** Players per effect, taken in turn: one that is still playing (or still rewinding) is not reused. */
-const POOL = 2;
+/** The effects heard all the time; they are made ready while the app starts (see `warm`). */
+const COMMON = ['tap', 'pick', 'putDown', 'pour', 'capOn'];
 
 /**
  * The sounds and the music of the app, played from files with expo-audio. It uses the same names
@@ -28,8 +28,10 @@ const POOL = 2;
  * @param {() => ({ audio: object, files: Record<string, unknown> } | null)} options.load
  * @param {() => boolean} options.soundOn the setting for the effects
  * @param {() => boolean} options.musicOn the setting for the music
+ * @param {number} [options.poolSize] players per effect, taken in turn so that one that is still
+ *   playing (or still rewinding) is not reused; a phone with little memory is better off with one
  */
-export function createSound({ load, soundOn, musicOn }) {
+export function createSound({ load, soundOn, musicOn, poolSize = 2 }) {
   // undefined until the first use, then the audio package, or null if this build has none
   let audio;
   let files = null;
@@ -60,7 +62,7 @@ export function createSound({ load, soundOn, musicOn }) {
     if (!pools.has(name)) {
       let pool = null;
       safely(() => {
-        const players = Array.from({ length: POOL }, () => {
+        const players = Array.from({ length: poolSize }, () => {
           const player = audio.createAudioPlayer(files[name]);
           player.volume = VOLUMES[name];
           return player;
@@ -121,6 +123,21 @@ export function createSound({ load, soundOn, musicOn }) {
         });
       }
       if (music) safely(() => music.play());
+    },
+
+    /**
+     * Makes the players of the common effects ready one after the other, while the app has
+     * nothing to do. A player is made on the first play otherwise, in the middle of a move.
+     */
+    warm() {
+      if (!soundOn() || !start()) return;
+      let next = 0;
+      const step = () => {
+        if (next >= COMMON.length) return;
+        poolOf(COMMON[next++]);
+        setTimeout(step, 80);
+      };
+      step();
     },
 
     /** Pauses the music, e.g. while the app is in the background. */

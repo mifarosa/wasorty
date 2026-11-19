@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import * as Skia from '@shopify/react-native-skia';
 import { advancePieces, launchPieces } from '../../src/scene/confetti.js';
 import { parseColor } from './color.js';
@@ -9,8 +9,11 @@ const MAX_AGE_S = 5;
 const FADE_S = 1;
 /** The least time between two frames of confetti. */
 const FRAME_MS = 30;
-/** Every other piece of the website's burst: half of them look the same on a phone. */
-const KEEP_EVERY = 2;
+/**
+ * Every other piece of the website's burst: half of them look the same on a phone, and a third
+ * of them on an Android phone, where every piece costs more and the phones are slower.
+ */
+const KEEP_EVERY = Platform.OS === 'android' ? 3 : 2;
 
 /**
  * Confetti shot from both bottom corners over the whole screen, with the website's own

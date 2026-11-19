@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "bake": "node scripts/bakeFewest.mjs && prettier --write src/game/fewestTable.js"
+    "bake": "node scripts/bakeDeals.mjs && prettier --write src/game/dealTable.js && node scripts/bakeFewest.mjs && prettier --write src/game/fewestTable.js"
   },
   "engines": {
     "node": ">=22.13"

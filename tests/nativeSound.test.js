@@ -119,6 +119,43 @@ describe('the sounds of the app', () => {
     expect(fake.players).toHaveLength(0);
   });
 
+  it('makes one player to an effect when asked to, for a phone with little memory', async () => {
+    const fake = fakeAudio();
+    const sound = createSound({
+      load: () => fake,
+      soundOn: () => true,
+      musicOn: () => true,
+      poolSize: 1
+    });
+    sound.play('pick');
+    await flush();
+    expect(fake.players.filter((player) => player.file === 'file:pick')).toHaveLength(1);
+  });
+
+  it('makes the players of the common sounds ready one after the other', () => {
+    const fake = fakeAudio();
+    const sound = make(fake);
+    sound.warm();
+    // The first is made at once, the others as time goes by, not all in one go.
+    const made = () => new Set(fake.players.map((player) => player.file)).size;
+    expect(made()).toBe(1);
+    vi.advanceTimersByTime(80);
+    expect(made()).toBe(2);
+    vi.advanceTimersByTime(1000);
+    expect(made()).toBe(5);
+    // What is ready is used when it is played.
+    const before = fake.players.length;
+    sound.play('tap');
+    expect(fake.players).toHaveLength(before);
+  });
+
+  it('makes nothing ready when the effects are off', () => {
+    const fake = fakeAudio();
+    make(fake, { soundOn: false }).warm();
+    vi.advanceTimersByTime(1000);
+    expect(fake.players).toHaveLength(0);
+  });
+
   it('is silent, never failing, in a build without the audio package or with a broken one', () => {
     for (const load of [
       () => null,
