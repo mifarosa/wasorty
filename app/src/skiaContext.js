@@ -101,6 +101,11 @@ export class SkiaContext2D {
     this.#recorder = this.#skia.Skia.PictureRecorder();
     this.#canvas = this.#recorder.beginRecording(this.#skia.Skia.XYWHRect(0, 0, width, height));
     this.#stack = [];
+    if (!this.#offscreen) {
+      // Every frame starts from nothing: a transparent surface keeps what was drawn on it
+      // before, and the old board showed through under the new one.
+      this.#canvas.clear(this.#skia.Skia.Color('rgba(0, 0, 0, 0)'));
+    }
     const background = this.#offscreen ? null : this.#background?.();
     if (background) {
       this.#canvas.drawRect(this.#skia.Skia.XYWHRect(0, 0, width, height), this.#solid(background));

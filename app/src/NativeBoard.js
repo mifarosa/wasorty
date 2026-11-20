@@ -127,13 +127,7 @@ export const NativeBoard = memo(function NativeBoard({ onScene, background }) {
         host.pointerDown?.({ clientX: locationX, clientY: locationY });
       }}
     >
-      <Skia.Canvas
-        style={{ flex: 1 }}
-        pointerEvents="none"
-        opaque={OPAQUE_BOARD}
-        colorSpace={ANDROID ? 'srgb' : 'p3'}
-        androidWarmup
-      >
+      <Skia.Canvas style={{ flex: 1 }} pointerEvents="none" opaque={OPAQUE_BOARD}>
         {picture && <Skia.Picture picture={picture} />}
       </Skia.Canvas>
     </View>
