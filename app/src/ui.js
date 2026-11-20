@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { words } from './appTexts.js';
 import { Icon } from './Icon.js';
@@ -35,19 +35,23 @@ export function glow(color, strength = 1) {
   };
 }
 
-/** A light stripe along the top of a button, as if light fell on it. */
+/**
+ * A light stripe along the top of a button, as if light fell on it. On Android the same stripe
+ * looked like a box laid on the button, so there it is thinner, fainter and rounded all the way.
+ */
 export function Gloss({ radius = 14 }) {
+  const android = Platform.OS === 'android';
   return (
     <View
       pointerEvents="none"
       style={{
         position: 'absolute',
-        top: 3,
-        left: 8,
-        right: 8,
-        height: '34%',
-        borderRadius: radius,
-        backgroundColor: 'rgba(255,255,255,0.22)'
+        top: android ? 4 : 3,
+        left: android ? 14 : 8,
+        right: android ? 14 : 8,
+        height: android ? 6 : '34%',
+        borderRadius: android ? 3 : radius,
+        backgroundColor: android ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.22)'
       }}
     />
   );

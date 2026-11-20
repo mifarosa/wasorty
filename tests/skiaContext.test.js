@@ -22,6 +22,7 @@ function fakeSkia({ surfaces = true } = {}) {
     drawRect: (rect, paint) => log.push(['drawRect', rect, paint.style, paint.color]),
     drawPicture: (picture) => log.push(['drawPicture', picture]),
     clipPath: () => log.push(['clip']),
+    clear: (color) => log.push(['clear', color]),
     drawText: (text) => log.push(['text', text]),
     drawImageRect: (image, src, dest) => log.push(['drawImageRect', image, src, dest])
   });
@@ -285,15 +286,31 @@ describe('the Skia context', () => {
     it('paints the board in its own color first when it has one', async () => {
       const { frame } = board(resting, { background: () => '#102030' });
       const picture = await frame();
-      expect(picture.log[0][0]).toBe('drawRect');
-      expect(picture.log[0][1]).toEqual({ x: 0, y: 0, width: 390, height: 600 });
-      expect(picture.log[0][3]).toBe('rgba(16, 32, 48, 1)');
+      expect(picture.log[1][0]).toBe('drawRect');
+      expect(picture.log[1][1]).toEqual({ x: 0, y: 0, width: 390, height: 600 });
+      expect(picture.log[1][3]).toBe('rgba(16, 32, 48, 1)');
       // A tube's own picture has no background.
       expect(
         flatten(placed(picture, 'drawImageRect')).some(
           (entry) => entry[3] === 'rgba(16, 32, 48, 1)'
         )
       ).toBe(false);
+    });
+
+    it('starts every frame by clearing the canvas, so an old board cannot show through', async () => {
+      const { frame } = board(resting);
+      for (let i = 0; i < 3; i++) {
+        const picture = await frame();
+        expect(picture.log[0]).toEqual(['clear', 'rgba(0, 0, 0, 0)']);
+        expect(picture.log.filter((entry) => entry[0] === 'clear')).toHaveLength(1);
+      }
+    });
+
+    it('does not clear the picture of a tube, which is put on the board whole', async () => {
+      const { frame } = board(resting, { textures: false });
+      const picture = await frame();
+      const inner = flatten(picture.log.filter((entry) => entry[0] === 'drawPicture'));
+      expect(inner.some((entry) => entry[0] === 'clear')).toBe(false);
     });
 
     it('leaves the board transparent when it has no color', async () => {
