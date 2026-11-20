@@ -4,8 +4,14 @@ import * as Skia from '@shopify/react-native-skia';
 import { TubeScene } from '../../src/scene/tubeScene.js';
 import { SkiaContext2D } from './skiaContext.js';
 
-/** Android shows an opaque canvas the cheapest way; iOS keeps the look it has always had. */
 const ANDROID = Platform.OS === 'android';
+/**
+ * Whether the board is an opaque canvas that paints the screen color itself. Android would show
+ * it on a surface of its own (a SurfaceView), the cheapest way, but on a Redmi 9C that surface
+ * hid the title above the board and stood out from the screen as a box, so the board is the
+ * transparent canvas it has always been. Everything else made for slow phones stays.
+ */
+const OPAQUE_BOARD = false;
 
 const fonts = new Map();
 
@@ -29,10 +35,6 @@ function fontFor(size, bold) {
  * The board. The web scene (src/scene/tubeScene.js) runs here as it is: it is handed a small
  * stand-in for a canvas element, which draws through Skia (see skiaContext.js) and passes taps
  * on. The game only sees the scene, which reports taps and is told what to show.
- *
- * On Android the canvas covers its place completely (it paints the color of the screen first),
- * which lets Android show it the cheapest way, on a surface of its own, instead of blending a
- * transparent one in with the rest of the screen in every frame.
  *
  * @param {object} props
  * @param {(scene: TubeScene) => void} props.onScene called once the scene is ready
@@ -81,7 +83,7 @@ export const NativeBoard = memo(function NativeBoard({ onScene, background }) {
           fontFor,
           pixelRatio: PixelRatio.get(),
           textures: ANDROID,
-          background: () => (ANDROID ? backgroundRef.current : null)
+          background: () => (OPAQUE_BOARD ? backgroundRef.current : null)
         }),
       addEventListener: (type, listener) => {
         if (type === 'pointerdown') element.pointerDown = listener;
@@ -128,7 +130,7 @@ export const NativeBoard = memo(function NativeBoard({ onScene, background }) {
       <Skia.Canvas
         style={{ flex: 1 }}
         pointerEvents="none"
-        opaque={ANDROID}
+        opaque={OPAQUE_BOARD}
         colorSpace={ANDROID ? 'srgb' : 'p3'}
         androidWarmup
       >
