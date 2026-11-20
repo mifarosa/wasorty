@@ -164,9 +164,11 @@ Sınırlar: bu yol **production** build içindir (TestFlight'a gider). Telefona 
     hizasında 1:1, bulanık olmasın); doku yapılamazsa resme düşer. iPhone'da resim yolu yeterli,
     çizim değişmedi.
   - Her şekil için yeni Skia boyası yaratılmıyor, aynı renk ve kalınlık için boya yeniden kullanılıyor.
-  - Android'de çizim yüzeyi **opak** (`opaque`, ekran rengini kendisi boyuyor), böylece Android bunu
-    kendi yüzeyinde (SurfaceView) gösteriyor; saydam yüzey her karede GPU karışımı demek.
-    sRGB renk uzayı ve ilk karede ısınma (`androidWarmup`) açık. iPhone aynı kaldı (P3, saydam).
+  - Android'de çizim yüzeyini **opak** yapmayı denedim (`OPAQUE_BOARD`, `app/src/NativeBoard.js`):
+    Android onu kendi yüzeyinde (SurfaceView) gösteriyor, en ucuz yol bu. Redmi 9C'de **tahtanın
+    üstündeki başlığı gizledi** ve tahta ekrandan ayrı bir kutu gibi göründü, o yüzden kapalı
+    (`false`); tahta her zamanki saydam yüzey. sRGB renk uzayı ve ilk karede ısınma
+    (`androidWarmup`) Android'de açık. iPhone aynı kaldı (P3, saydam).
   - **Kare hızı kendiliğinden ayarlanıyor** (`src/scene/tubeScene.js`): sıvı dökülürken bir kare
     ortalama 9 ms'den uzun sürerse yaklaşık 30 kare/sn'e iner (dokunuşlara ve React'e zaman kalır),
     5 ms'nin altına inince 60'a döner. Yavaş telefon kendini ayarlıyor, hızlısı etkilenmiyor.
